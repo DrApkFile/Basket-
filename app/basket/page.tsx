@@ -5,6 +5,7 @@ import { useAccount, useWalletClient, useChainId, useSwitchChain } from "wagmi";
 import { createExchange, somniaShannon } from "@/lib/somnia";
 import { placeBatchOrders, verifyMarketsTrading } from "@/lib/batch-orders";
 import type { BasketConstructInput, BasketProposal, BasketDoc } from "@/lib/firestore-types";
+import type { BatchOrderResult } from "@/lib/batch-orders";
 import DashboardTopBar from "@/components/DashboardTopBar";
 import LiveMarketsSidebar from "@/components/LiveMarketsSidebar";
 import MyBasketsPanel from "@/components/MyBasketsPanel";
@@ -41,6 +42,7 @@ export default function BasketPage() {
   const [basketId, setBasketId] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("");
   const [marketsInfo, setMarketsInfo] = useState<MarketsInfo | null>(null);
+  const [orderResults, setOrderResults] = useState<BatchOrderResult | null>(null);
 
   // User baskets state
   const [userBaskets, setUserBaskets] = useState<UserBasket[]>([]);
@@ -182,6 +184,9 @@ export default function BasketPage() {
         }
       }
 
+      // Store order results for done screen
+      setOrderResults(batchResult);
+
       if (batchResult.successCount === 0) {
         // Get the actual error messages from failed orders
         const failed = batchResult.results.filter((r) => !r.success);
@@ -227,6 +232,7 @@ export default function BasketPage() {
     setProposal(null);
     setBasketId(null);
     setProgress("");
+    setOrderResults(null);
   }
 
   // Summary stats for top bar
@@ -562,16 +568,68 @@ export default function BasketPage() {
 
             {/* Step: Done */}
             {step === "done" && (
-              <section className="rounded-xl border border-green-500/30 bg-green-500/10 p-8 text-center">
-                <div className="text-2xl">✅</div>
-                <p className="mt-3 text-sm text-green-400">Basket created successfully!</p>
-                <p className="mt-1 font-mono text-xs text-white/40">ID: {basketId}</p>
-                <p className="mt-2 text-xs text-white/50">
+              <section className="rounded-xl border border-green-500/30 bg-green-500/10 p-6">
+                <div className="text-center">
+                  <div className="text-2xl">{orderResults?.allSucceeded ? "✅" : "⚠️"}</div>
+                  <p className="mt-3 text-sm text-green-400">
+                    Basket created with {orderResults?.successCount ?? 0} of{" "}
+                    {orderResults?.results.length ?? 0} positions
+                  </p>
+                  <p className="mt-1 font-mono text-xs text-white/40">ID: {basketId}</p>
+                </div>
+
+                {/* Order breakdown */}
+                {orderResults && !orderResults.allSucceeded && (
+                  <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
+                    <p className="text-xs font-semibold text-yellow-400">
+                      {orderResults.failCount} order{orderResults.failCount > 1 ? "s" : ""} failed
+                    </p>
+                    <ul className="mt-2 space-y-1 text-[11px] text-yellow-400/80">
+                      {orderResults.results
+                        .filter((r) => !r.success)
+                        .map((r, i) => (
+                          <li key={i} className="flex items-start gap-1">
+                            <span className="text-yellow-400/60">•</span>
+                            <span>
+                              {r.symbol}: {r.error || "Unknown error"}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                    <p className="mt-2 text-[10px] text-yellow-400/60">
+                      Only successful orders are tracked in your basket.
+                    </p>
+                  </div>
+                )}
+
+                {/* Positions placed */}
+                {orderResults && orderResults.successCount > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold text-white/60">POSITIONS PLACED</p>
+                    <ul className="mt-2 space-y-1 text-[11px]">
+                      {orderResults.results
+                        .filter((r) => r.success)
+                        .map((r, i) => (
+                          <li
+                            key={i}
+                            className="flex items-center justify-between rounded bg-white/5 px-2 py-1.5"
+                          >
+                            <span className="font-mono text-accent">{r.symbol}</span>
+                            <span className="text-white/40">
+                              {r.filled > 0 ? `${r.filled} filled` : "pending fill"}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+
+                <p className="mt-4 text-center text-xs text-white/50">
                   View your basket in the panel on the right →
                 </p>
                 <button
                   onClick={handleReset}
-                  className="glass-pill mt-6 rounded-full px-6 py-2 text-sm font-semibold tracking-wide"
+                  className="glass-pill mt-4 w-full rounded-full px-6 py-2 text-sm font-semibold tracking-wide"
                 >
                   CREATE ANOTHER
                 </button>
