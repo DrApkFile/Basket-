@@ -1,26 +1,44 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-ink: #0a0b0e;
+  --color-accent: #00e28a;
+  --color-loss: #ff4d5e;
+  --font-display: var(--font-outfit);
+  --font-sans: var(--font-plus-jakarta);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink);
+  color: #ffffff;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Organic radial vignette over the particle field — matches the design spec
+   exactly rather than an arbitrary Tailwind gradient utility. */
+.hero-vignette {
+  background: radial-gradient(
+    ellipse 68% 68% at 50% 50%,
+    transparent 22%,
+    rgba(10, 11, 14, 0.4) 50%,
+    rgba(10, 11, 14, 0.82) 75%,
+    rgba(10, 11, 14, 0.98) 100%
+  );
+}
+
+.glass-pill {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.glass-pill:hover {
+  border-color: rgba(0, 226, 138, 0.55);
+  box-shadow: 0 0 28px rgba(0, 226, 138, 0.22);
+  background: rgba(255, 255, 255, 0.06);
 }
