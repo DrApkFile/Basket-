@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useAccount, useWalletClient, useChainId, useSwitchChain } from "wagmi";
 import { useSearchParams } from "next/navigation";
 import { createExchange, somniaShannon } from "@/lib/somnia";
@@ -36,6 +36,22 @@ interface DroppedLeg {
 }
 
 export default function BasketPage() {
+  return (
+    <Suspense fallback={<BasketPageLoading />}>
+      <BasketPageContent />
+    </Suspense>
+  );
+}
+
+function BasketPageLoading() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-[#0a0a0f]">
+      <p className="text-white/60">Loading...</p>
+    </div>
+  );
+}
+
+function BasketPageContent() {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
