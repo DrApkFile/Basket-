@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAccount, useWalletClient, useChainId, useSwitchChain } from "wagmi";
+import { useSearchParams } from "next/navigation";
 import { createExchange, somniaShannon } from "@/lib/somnia";
 import { placeBatchOrders, verifyMarketsTrading } from "@/lib/batch-orders";
 import type { BasketConstructInput, BasketProposal, BasketDoc } from "@/lib/firestore-types";
@@ -28,13 +29,20 @@ interface UserBasket extends BasketDoc {
 
 const SOMNIA_SHANNON_CHAIN_ID = 50312;
 
+interface DroppedLeg {
+  symbol: string;
+  reason: string;
+}
+
 export default function BasketPage() {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const searchParams = useSearchParams();
 
   const isWrongNetwork = chainId !== SOMNIA_SHANNON_CHAIN_ID;
+  const isDraftMode = searchParams.get("mode") === "draft";
 
   const [step, setStep] = useState<Step>("form");
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +51,10 @@ export default function BasketPage() {
   const [progress, setProgress] = useState<string>("");
   const [marketsInfo, setMarketsInfo] = useState<MarketsInfo | null>(null);
   const [orderResults, setOrderResults] = useState<BatchOrderResult | null>(null);
+
+  // Draft mode state (for copied baskets)
+  const [droppedLegs, setDroppedLegs] = useState<DroppedLeg[]>([]);
+  const [isFromCopy, setIsFromCopy] = useState(false);
 
   // User baskets state
   const [userBaskets, setUserBaskets] = useState<UserBasket[]>([]);
@@ -102,6 +114,58 @@ export default function BasketPage() {
       });
     }
   }, [walletClient]);
+
+  // Load draft from sessionStorage if in draft mode
+  useEffect(() => {
+    if (isDraftMode) {
+      try {
+        const draftStr = sessionStorage.getItem("basketDraft");
+        const droppedStr = sessionStorage.getItem("basketDraftDropped");
+
+        if (draftStr) {
+          const draft = JSON.parse(draftStr);
+
+          // Build proposal from draft
+          const draftProposal: BasketProposal = {
+            asset: draft.asset,
+            legs: draft.legs,
+            totalCost: draft.totalCost,
+            worstCase: draft.worstCase,
+            bestCase: draft.bestCase,
+            reasoning: draft.originalReasoning
+              ? `[Copied basket]\n\nOriginal reasoning:\n${draft.originalReasoning}`
+              : "[Copied basket with live prices]",
+            riskComparison: {
+              basketStdDev: 0,
+              singleBetStdDev: 0,
+              varianceReductionPct: 0,
+            },
+            proposalHash: "", // Will be regenerated on approval
+            proposalTimestamp: new Date().toISOString(),
+          };
+
+          setProposal(draftProposal);
+          setAsset(draft.asset);
+          setCrossAsset(draft.crossAsset || false);
+          setNumWindows(draft.legs.length);
+          setMaxSpend(Math.ceil(draft.totalCost * 1.1));
+          setIsFromCopy(true);
+          setStep("proposal");
+
+          // Load dropped legs if any
+          if (droppedStr) {
+            setDroppedLegs(JSON.parse(droppedStr));
+          }
+
+          // Clean up sessionStorage
+          sessionStorage.removeItem("basketDraft");
+          sessionStorage.removeItem("basketDraftDropped");
+        }
+      } catch (err) {
+        console.error("Failed to load draft:", err);
+      }
+    }
+  }, [isDraftMode]);
 
   // Handle market hint from sidebar
   function handleMarketHint(hintAsset: string) {
@@ -233,6 +297,8 @@ export default function BasketPage() {
     setBasketId(null);
     setProgress("");
     setOrderResults(null);
+    setDroppedLegs([]);
+    setIsFromCopy(false);
   }
 
   // Summary stats for top bar
@@ -412,6 +478,44 @@ export default function BasketPage() {
                     </span>
                   )}
                 </h2>
+
+                {/* Copied basket indicator */}
+                {isFromCopy && (
+                  <div className="mt-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-400">📋</span>
+                      <div>
+                        <p className="text-xs font-medium text-blue-400">
+                          Copied basket with live prices
+                        </p>
+                        <p className="mt-1 text-[11px] text-blue-400/70">
+                          This draft was copied from a shared basket. Prices have been refreshed to
+                          current market rates. You can edit before placing orders.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dropped legs warning (from copy) */}
+                {droppedLegs.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-yellow-400">⚠</span>
+                      <div>
+                        <p className="text-xs font-medium text-yellow-400">
+                          {droppedLegs.length} window{droppedLegs.length > 1 ? "s" : ""} couldn't be
+                          copied
+                        </p>
+                        <ul className="mt-1 space-y-0.5 text-[11px] text-yellow-400/70">
+                          {droppedLegs.map((dl, i) => (
+                            <li key={i}>• {dl.symbol}: {dl.reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Availability Note - when fewer windows than requested */}
                 {proposal.availabilityNote && (

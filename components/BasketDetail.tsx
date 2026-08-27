@@ -223,6 +223,17 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
           <p className="mt-1 font-mono text-xs text-white/40">{basketId.slice(0, 8)}...</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/basket/${basketId}`;
+              navigator.clipboard.writeText(url);
+              alert("Share link copied!");
+            }}
+            className="rounded bg-white/5 px-2 py-1 text-[10px] text-white/50 hover:bg-white/10 hover:text-white/70"
+            title="Copy share link"
+          >
+            Share
+          </button>
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
               basket.status === "redeemed"
