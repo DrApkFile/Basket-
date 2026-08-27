@@ -10,6 +10,7 @@ import type { BatchOrderResult } from "@/lib/batch-orders";
 import DashboardTopBar from "@/components/DashboardTopBar";
 import LiveMarketsSidebar from "@/components/LiveMarketsSidebar";
 import MyBasketsPanel from "@/components/MyBasketsPanel";
+import CommunityPanel from "@/components/CommunityPanel";
 import PositionCard from "@/components/PositionCard";
 
 type Step = "form" | "loading" | "proposal" | "placing" | "done" | "error";
@@ -66,6 +67,9 @@ export default function BasketPage() {
   const [numWindows, setNumWindows] = useState(3);
   const [maxSpend, setMaxSpend] = useState(10);
   const [risk, setRisk] = useState<"low" | "medium" | "high">("medium");
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"constructor" | "community">("constructor");
 
   const exchangeRef = useRef(createExchange());
 
@@ -313,17 +317,23 @@ export default function BasketPage() {
         totalBaskets={totalBaskets}
         totalPending={totalPending}
         totalRedeemable={totalRedeemable}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Live Markets */}
-        <div className="w-56 flex-shrink-0">
-          <LiveMarketsSidebar onMarketHint={handleMarketHint} />
-        </div>
+      {/* Community Tab */}
+      {activeTab === "community" ? (
+        <CommunityPanel />
+      ) : (
+        /* Constructor Tab */
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Sidebar - Live Markets */}
+          <div className="w-56 flex-shrink-0">
+            <LiveMarketsSidebar onMarketHint={handleMarketHint} />
+          </div>
 
-        {/* Center Panel - Constructor */}
-        <main className="flex-1 overflow-y-auto p-6">
+          {/* Center Panel - Constructor */}
+          <main className="flex-1 overflow-y-auto p-6">
           <div className="mx-auto max-w-2xl">
             {/* Network Warning */}
             {isWrongNetwork && address && (
@@ -743,16 +753,17 @@ export default function BasketPage() {
         </main>
 
         {/* Right Panel - My Baskets */}
-        {address && (
-          <div className="w-72 flex-shrink-0">
-            <MyBasketsPanel
-              baskets={userBaskets}
-              loading={basketsLoading}
-              onRefresh={fetchUserBaskets}
-            />
-          </div>
-        )}
-      </div>
+          {address && (
+            <div className="w-72 flex-shrink-0">
+              <MyBasketsPanel
+                baskets={userBaskets}
+                loading={basketsLoading}
+                onRefresh={fetchUserBaskets}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
