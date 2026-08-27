@@ -222,8 +222,11 @@ Write a brief, natural, HONEST status update. Include specific numbers.`;
         marketId: l.marketId,
         symbol: l.symbol,
         side: l.side,
+        price: l.price, // Original price at time of order (for display)
         filled: l.filled,
         cost: l.cost,
+        interval: l.interval,
+        expiry: l.expiry,
         onchainStatus: l.onchainStatus,
         outcome: l.resolvedOutcome,
         payout: l.payout,

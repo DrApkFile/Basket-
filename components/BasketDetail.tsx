@@ -30,8 +30,11 @@ interface NarrationResponse {
     marketId: string;
     symbol: string;
     side: string;
+    price: number;
     filled: number;
     cost: number;
+    interval: string;
+    expiry: number;
     onchainStatus: number;
     outcome: string;
     payout: number;
@@ -287,9 +290,10 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
                   position={{
                     symbol: leg.symbol,
                     side: leg.side as "YES" | "NO",
-                    expiry: Math.floor(Date.now() / 1000), // Already expired/settled
-                    price: leg.cost / leg.filled, // Reconstruct price
+                    expiry: leg.expiry,
+                    price: leg.price, // Use stored original price
                     quantity: leg.filled,
+                    interval: leg.interval,
                     outcome: leg.outcome,
                     payout: leg.payout,
                   }}
@@ -317,6 +321,20 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       {redeeming && (
         <div className="mt-4 rounded bg-white/5 p-3 text-center text-sm text-white/60">
           {redeemProgress}
+        </div>
+      )}
+
+      {/* All settled with no wins - nothing to redeem */}
+      {allSettled && !canRedeem && !redeeming && basket.status !== "redeemed" && (
+        <div className="mt-4 rounded-lg border border-white/10 bg-white/5 p-3 text-center">
+          <p className="text-xs text-white/60">
+            {narration?.summary?.losses === narration?.summary?.total
+              ? "All positions lost — nothing to redeem."
+              : "No winning positions to redeem."}
+          </p>
+          <p className="mt-1 text-[10px] text-white/40">
+            Lost bets pay out $0. Only winning or voided positions can be redeemed.
+          </p>
         </div>
       )}
 

@@ -60,8 +60,16 @@ export function toPlainLanguage(position: PositionInput): PlainLanguagePosition 
   const question = `Will ${asset} be ${direction} its reference price ${dateStr}?`;
 
   // Confidence from price (price ≈ implied probability)
-  const confidencePct = Math.round(position.price * 100);
-  const confidence = `${confidencePct}% market confidence`;
+  // Guard against invalid prices (0, null, undefined, Infinity, NaN)
+  const priceValid =
+    typeof position.price === "number" &&
+    isFinite(position.price) &&
+    position.price > 0 &&
+    position.price <= 1;
+
+  const confidence = priceValid
+    ? `${Math.round(position.price * 100)}% market confidence`
+    : "Market confidence unavailable";
 
   // Window label from interval or calculate from expiry
   let windowLabel: string;
@@ -121,6 +129,11 @@ function formatInterval(interval: string): string {
 export function toShortSummary(position: PositionInput): string {
   const asset = position.symbol.split("-")[0];
   const direction = position.side === "YES" ? "UP" : "DOWN";
-  const confidencePct = Math.round(position.price * 100);
+  const priceValid =
+    typeof position.price === "number" &&
+    isFinite(position.price) &&
+    position.price > 0 &&
+    position.price <= 1;
+  const confidencePct = priceValid ? Math.round(position.price * 100) : "?";
   return `${asset} ${direction} @ ${confidencePct}%`;
 }
