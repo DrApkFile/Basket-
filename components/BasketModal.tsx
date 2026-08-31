@@ -180,582 +180,242 @@ export default function BasketModal({
   if (!isOpen) return null;
 
   return (
-    <>
-      <style jsx>{`
-        .modal-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 200;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(0, 0, 0, 0.85);
-          backdrop-filter: blur(8px);
-        }
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
-        .modal {
-          position: relative;
-          width: 100%;
-          max-width: 520px;
-          max-height: 90vh;
-          overflow-y: auto;
-          margin: 20px;
-          padding: 32px;
-          background: linear-gradient(145deg, rgba(20, 18, 24, 0.95), rgba(8, 10, 12, 0.98));
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 24px;
-          box-shadow:
-            0 24px 80px rgba(0, 0, 0, 0.6),
-            inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        }
+      {/* Modal */}
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0f0f14] p-6">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-lg p-1 text-white/40 hover:bg-white/10 hover:text-white"
+        >
+          <X className="h-5 w-5" />
+        </button>
 
-        .modal-close {
-          position: absolute;
-          top: 20px;
-          right: 20px;
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 10px;
-          color: rgba(255, 255, 255, 0.5);
-          cursor: pointer;
-          transition: all 200ms;
-        }
-
-        .modal-close:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: #fff;
-        }
-
-        .modal-title {
-          font-size: 24px;
-          font-weight: 700;
-          margin: 0 0 8px;
-          background: linear-gradient(135deg, #FF6B35, #00E28A);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .modal-subtitle {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.5);
-          margin-bottom: 28px;
-        }
-
-        .form-group {
-          margin-bottom: 20px;
-        }
-
-        .form-label {
-          display: block;
-          font-size: 13px;
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.6);
-          margin-bottom: 8px;
-        }
-
-        .form-label span {
-          color: #FF6B35;
-        }
-
-        .form-input,
-        .form-select {
-          width: 100%;
-          padding: 14px 16px;
-          font-size: 15px;
-          color: #fff;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-          outline: none;
-          transition: all 200ms;
-        }
-
-        .form-input:focus,
-        .form-select:focus {
-          border-color: rgba(255, 107, 53, 0.4);
-          background: rgba(255, 255, 255, 0.06);
-        }
-
-        .form-select option {
-          background: #1a1a1e;
-          color: #fff;
-        }
-
-        .form-checkbox {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          padding: 16px;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.06), rgba(0, 226, 138, 0.03));
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 12px;
-          cursor: pointer;
-        }
-
-        .form-checkbox input {
-          width: 18px;
-          height: 18px;
-          margin-top: 2px;
-          accent-color: #FF6B35;
-        }
-
-        .form-checkbox-label {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.8);
-        }
-
-        .form-checkbox-desc {
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.4);
-          margin-top: 4px;
-        }
-
-        .btn-primary {
-          width: 100%;
-          padding: 16px;
-          font-size: 15px;
-          font-weight: 600;
-          color: #000;
-          background: linear-gradient(135deg, #FF6B35, #FF8B5A);
-          border: none;
-          border-radius: 14px;
-          cursor: pointer;
-          box-shadow: 0 4px 20px rgba(255, 107, 53, 0.35);
-          transition: all 250ms;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(255, 107, 53, 0.45);
-        }
-
-        .btn-primary:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .btn-secondary {
-          padding: 14px 24px;
-          font-size: 14px;
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.7);
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-          cursor: pointer;
-          transition: all 200ms;
-        }
-
-        .btn-secondary:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: #fff;
-        }
-
-        .btn-success {
-          flex: 1;
-          padding: 14px 24px;
-          font-size: 14px;
-          font-weight: 600;
-          color: #000;
-          background: linear-gradient(135deg, #00E28A, #00C77A);
-          border: none;
-          border-radius: 12px;
-          cursor: pointer;
-          box-shadow: 0 4px 16px rgba(0, 226, 138, 0.3);
-          transition: all 200ms;
-        }
-
-        .btn-success:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 24px rgba(0, 226, 138, 0.4);
-        }
-
-        .btn-row {
-          display: flex;
-          gap: 12px;
-          margin-top: 24px;
-        }
-
-        .alert {
-          padding: 16px;
-          border-radius: 12px;
-          margin-bottom: 20px;
-          font-size: 14px;
-        }
-
-        .alert-warning {
-          background: rgba(255, 184, 0, 0.1);
-          border: 1px solid rgba(255, 184, 0, 0.2);
-          color: #FFB800;
-        }
-
-        .alert-error {
-          background: rgba(255, 70, 70, 0.1);
-          border: 1px solid rgba(255, 70, 70, 0.2);
-          color: #FF5050;
-        }
-
-        .alert button {
-          margin-left: 12px;
-          padding: 4px 12px;
-          font-size: 12px;
-          background: rgba(255, 255, 255, 0.1);
-          border: none;
-          border-radius: 6px;
-          color: inherit;
-          cursor: pointer;
-        }
-
-        .loading-state {
-          text-align: center;
-          padding: 48px 20px;
-        }
-
-        .loading-icon {
-          font-size: 48px;
-          margin-bottom: 20px;
-        }
-
-        .loading-text {
-          font-size: 15px;
-          color: rgba(255, 255, 255, 0.6);
-        }
-
-        .loading-subtext {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.4);
-          margin-top: 8px;
-        }
-
-        .loading-bar {
-          width: 200px;
-          height: 4px;
-          margin: 20px auto 0;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 2px;
-          overflow: hidden;
-        }
-
-        .loading-bar-fill {
-          height: 100%;
-          width: 50%;
-          background: linear-gradient(90deg, #FF6B35, #00E28A);
-          border-radius: 2px;
-          animation: loading 1.5s ease-in-out infinite;
-        }
-
-        @keyframes loading {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(300%); }
-        }
-
-        .proposal-stats {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
-          padding: 20px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 16px;
-          margin-bottom: 24px;
-        }
-
-        .proposal-stat {
-          text-align: center;
-        }
-
-        .proposal-stat-label {
-          font-size: 11px;
-          color: rgba(255, 255, 255, 0.4);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .proposal-stat-value {
-          font-size: 20px;
-          font-weight: 700;
-          margin-top: 4px;
-        }
-
-        .proposal-stat-value.cost {
-          color: #FF6B35;
-        }
-
-        .proposal-stat-value.worst {
-          color: #FF5050;
-        }
-
-        .proposal-stat-value.best {
-          color: #00E28A;
-        }
-
-        .positions-list {
-          max-height: 200px;
-          overflow-y: auto;
-          margin-bottom: 20px;
-        }
-
-        .positions-list > * + * {
-          margin-top: 8px;
-        }
-
-        .reasoning {
-          padding: 16px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.04);
-          border-radius: 12px;
-          margin-bottom: 20px;
-        }
-
-        .reasoning-label {
-          font-size: 11px;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.4);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 8px;
-        }
-
-        .reasoning-text {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.6);
-          line-height: 1.6;
-          max-height: 100px;
-          overflow-y: auto;
-        }
-
-        .success-state {
-          text-align: center;
-          padding: 32px 20px;
-        }
-
-        .success-icon {
-          width: 72px;
-          height: 72px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 20px;
-          background: linear-gradient(135deg, rgba(0, 226, 138, 0.15), rgba(0, 226, 138, 0.05));
-          border-radius: 20px;
-          font-size: 32px;
-        }
-
-        .success-title {
-          font-size: 20px;
-          font-weight: 600;
-          color: #00E28A;
-          margin-bottom: 8px;
-        }
-
-        .success-subtitle {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.4);
-          font-family: monospace;
-        }
-      `}</style>
-
-      <div className="modal-backdrop" onClick={onClose}>
-        <div className="modal" onClick={(e) => e.stopPropagation()}>
-          <button className="modal-close" onClick={onClose}>
-            <X size={18} />
-          </button>
-
-          {/* Network Warning */}
-          {isWrongNetwork && address && (
-            <div className="alert alert-warning">
-              Wrong network — switch to Somnia Shannon
-              <button onClick={() => switchChain?.({ chainId: SOMNIA_SHANNON_CHAIN_ID })}>
+        {/* Network Warning */}
+        {isWrongNetwork && address && (
+          <div className="mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-yellow-400">Wrong Network</p>
+                <p className="text-xs text-yellow-400/70">Switch to Somnia Shannon testnet</p>
+              </div>
+              <button
+                onClick={() => switchChain?.({ chainId: SOMNIA_SHANNON_CHAIN_ID })}
+                className="rounded bg-yellow-500/20 px-3 py-1.5 text-xs font-semibold text-yellow-400 hover:bg-yellow-500/30"
+              >
                 Switch
               </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Error */}
-          {error && (
-            <div className="alert alert-error">
-              {error}
-              <button onClick={handleReset}>Try again</button>
-            </div>
-          )}
+        {/* Error */}
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            {error}
+            <button onClick={handleReset} className="ml-4 underline">
+              Try again
+            </button>
+          </div>
+        )}
 
-          {/* Form */}
-          {step === "form" && (
-            <>
-              <h2 className="modal-title">Create Basket</h2>
-              <p className="modal-subtitle">AI will construct a diversified prediction basket</p>
+        {/* Step: Form */}
+        {step === "form" && (
+          <>
+            <h2 className="text-lg font-bold text-white">Create Basket</h2>
+            <p className="mt-1 text-sm text-white/50">
+              AI will construct a diversified prediction basket
+            </p>
 
-              <div className="form-group">
-                <label className="form-label">
-                  Asset {marketCount > 0 && <span>({marketCount} markets)</span>}
-                </label>
+            <div className="mt-5 grid gap-4">
+              <label className="block">
+                <span className="text-xs text-white/60">
+                  Asset {marketCount > 0 && <span className="text-accent">({marketCount} markets)</span>}
+                </span>
                 <select
-                  className="form-select"
                   value={asset}
                   onChange={(e) => setAsset(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white"
                 >
                   {availableAssets.map((a) => (
-                    <option key={a} value={a}>{a}</option>
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
                   ))}
                 </select>
-              </div>
+              </label>
 
-              <div className="form-group">
-                <label className="form-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={crossAsset}
-                    onChange={(e) => setCrossAsset(e.target.checked)}
-                  />
-                  <div>
-                    <div className="form-checkbox-label">Cross-asset (BTC + ETH)</div>
-                    <div className="form-checkbox-desc">Spread across both assets for more windows</div>
-                  </div>
-                </label>
-              </div>
+              <label className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={crossAsset}
+                  onChange={(e) => setCrossAsset(e.target.checked)}
+                  className="h-4 w-4 rounded border-white/20 bg-transparent accent-orange-500"
+                />
+                <div>
+                  <span className="text-xs text-white/80">Cross-asset (BTC + ETH)</span>
+                  <p className="text-[10px] text-white/40">Spread across both assets</p>
+                </div>
+              </label>
 
-              <div className="form-group">
-                <label className="form-label">Windows (2-5)</label>
+              <label className="block">
+                <span className="text-xs text-white/60">Windows (2-5)</span>
                 <input
                   type="number"
-                  className="form-input"
                   min={2}
                   max={5}
                   value={numWindows}
                   onChange={(e) => setNumWindows(Number(e.target.value))}
+                  className="mt-1 block w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white"
                 />
-              </div>
+              </label>
 
-              <div className="form-group">
-                <label className="form-label">Max Spend (USDC)</label>
+              <label className="block">
+                <span className="text-xs text-white/60">Max Spend (USDC)</span>
                 <input
                   type="number"
-                  className="form-input"
                   min={1}
                   value={maxSpend}
                   onChange={(e) => setMaxSpend(Number(e.target.value))}
+                  className="mt-1 block w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white"
                 />
-              </div>
+              </label>
 
-              <div className="form-group">
-                <label className="form-label">Risk Tolerance</label>
+              <label className="block">
+                <span className="text-xs text-white/60">Risk Tolerance</span>
                 <select
-                  className="form-select"
                   value={risk}
                   onChange={(e) => setRisk(e.target.value as "low" | "medium" | "high")}
+                  className="mt-1 block w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                 </select>
+              </label>
+            </div>
+
+            <button
+              onClick={handleConstruct}
+              disabled={!address}
+              className="mt-6 w-full rounded-lg bg-gradient-to-r from-orange-500 to-green-500 px-6 py-3 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+            >
+              {address ? "Construct Basket" : "Connect Wallet First"}
+            </button>
+          </>
+        )}
+
+        {/* Step: Loading */}
+        {step === "loading" && (
+          <div className="py-12 text-center">
+            <div className="text-3xl">🤖</div>
+            <p className="mt-4 text-sm text-white/60">AI is analyzing markets...</p>
+            <div className="mx-auto mt-4 h-1 w-48 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-gradient-to-r from-orange-500 to-green-500" />
+            </div>
+          </div>
+        )}
+
+        {/* Step: Proposal */}
+        {step === "proposal" && proposal && (
+          <>
+            <h2 className="text-lg font-bold text-white">Basket Proposal</h2>
+
+            {/* Summary */}
+            <div className="mt-4 grid grid-cols-3 gap-4 rounded-lg bg-white/5 p-4 text-center text-sm">
+              <div>
+                <div className="text-xs text-white/40">Cost</div>
+                <div className="font-mono text-orange-400">${proposal.totalCost.toFixed(2)}</div>
               </div>
-
-              <button
-                className="btn-primary"
-                onClick={handleConstruct}
-                disabled={!address}
-              >
-                {address ? "Construct Basket" : "Connect Wallet First"}
-              </button>
-            </>
-          )}
-
-          {/* Loading */}
-          {step === "loading" && (
-            <div className="loading-state">
-              <div className="loading-icon">🤖</div>
-              <p className="loading-text">AI is analyzing markets...</p>
-              <div className="loading-bar">
-                <div className="loading-bar-fill" />
+              <div>
+                <div className="text-xs text-white/40">Worst</div>
+                <div className="font-mono text-red-400">${proposal.worstCase.toFixed(2)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-white/40">Best</div>
+                <div className="font-mono text-green-400">${proposal.bestCase.toFixed(2)}</div>
               </div>
             </div>
-          )}
 
-          {/* Proposal */}
-          {step === "proposal" && proposal && (
-            <>
-              <h2 className="modal-title">Basket Proposal</h2>
-
-              <div className="proposal-stats">
-                <div className="proposal-stat">
-                  <div className="proposal-stat-label">Cost</div>
-                  <div className="proposal-stat-value cost">${proposal.totalCost.toFixed(2)}</div>
-                </div>
-                <div className="proposal-stat">
-                  <div className="proposal-stat-label">Worst</div>
-                  <div className="proposal-stat-value worst">${proposal.worstCase.toFixed(2)}</div>
-                </div>
-                <div className="proposal-stat">
-                  <div className="proposal-stat-label">Best</div>
-                  <div className="proposal-stat-value best">${proposal.bestCase.toFixed(2)}</div>
-                </div>
-              </div>
-
-              <div className="positions-list">
+            {/* Positions */}
+            <div className="mt-4">
+              <div className="text-xs font-bold text-white/60">POSITIONS ({proposal.legs.length})</div>
+              <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
                 {proposal.legs.map((leg, i) => (
-                  <PositionCard
-                    key={i}
-                    position={{
-                      symbol: leg.symbol,
-                      side: leg.side,
-                      expiry: leg.expiry,
-                      price: leg.price,
-                      quantity: leg.quantity,
-                      interval: leg.interval,
-                      cost: leg.cost,
-                    }}
-                    showCost={true}
-                    compact={true}
-                  />
+                  <li key={i}>
+                    <PositionCard
+                      position={{
+                        symbol: leg.symbol,
+                        side: leg.side,
+                        expiry: leg.expiry,
+                        price: leg.price,
+                        quantity: leg.quantity,
+                        interval: leg.interval,
+                        cost: leg.cost,
+                      }}
+                      showCost={true}
+                      compact={true}
+                    />
+                  </li>
                 ))}
-              </div>
-
-              <div className="reasoning">
-                <div className="reasoning-label">AI Reasoning</div>
-                <p className="reasoning-text">{proposal.reasoning}</p>
-              </div>
-
-              <div className="btn-row">
-                <button className="btn-success" onClick={handleApprove}>
-                  Approve & Place
-                </button>
-                <button className="btn-secondary" onClick={handleReject}>
-                  Reject
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Placing */}
-          {step === "placing" && (
-            <div className="loading-state">
-              <div className="loading-icon">⏳</div>
-              <p className="loading-text">{progress}</p>
-              <p className="loading-subtext">Sign each transaction in your wallet</p>
+              </ul>
             </div>
-          )}
 
-          {/* Done */}
-          {step === "done" && (
-            <div className="success-state">
-              <div className="success-icon">
-                {orderResults?.allSucceeded ? "✅" : "⚠️"}
-              </div>
-              <h3 className="success-title">
-                Basket created with {orderResults?.successCount ?? 0} positions
-              </h3>
-              <p className="success-subtitle">ID: {basketId}</p>
-              <button className="btn-primary" onClick={onClose} style={{ marginTop: 24 }}>
-                Done
+            {/* Reasoning */}
+            <div className="mt-4">
+              <div className="text-xs font-bold text-white/60">AI REASONING</div>
+              <p className="mt-2 max-h-24 overflow-y-auto text-xs leading-relaxed text-white/70">
+                {proposal.reasoning}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={handleApprove}
+                className="flex-1 rounded-lg bg-green-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+              >
+                Approve & Place
+              </button>
+              <button
+                onClick={handleReject}
+                className="rounded-lg border border-white/20 px-6 py-2.5 text-sm font-semibold text-white/60 hover:bg-white/5"
+              >
+                Reject
               </button>
             </div>
-          )}
-        </div>
+          </>
+        )}
+
+        {/* Step: Placing */}
+        {step === "placing" && (
+          <div className="py-12 text-center">
+            <div className="text-3xl">⏳</div>
+            <p className="mt-4 text-sm text-white/60">{progress}</p>
+            <p className="mt-1 text-xs text-white/40">Sign each transaction in your wallet</p>
+          </div>
+        )}
+
+        {/* Step: Done */}
+        {step === "done" && (
+          <div className="py-8 text-center">
+            <div className="text-3xl">{orderResults?.allSucceeded ? "✅" : "⚠️"}</div>
+            <p className="mt-4 text-sm text-green-400">
+              Basket created with {orderResults?.successCount ?? 0} positions
+            </p>
+            <p className="mt-1 font-mono text-xs text-white/40">ID: {basketId}</p>
+            <button
+              onClick={onClose}
+              className="mt-6 rounded-lg bg-gradient-to-r from-orange-500 to-green-500 px-6 py-2.5 text-sm font-semibold text-white"
+            >
+              Done
+            </button>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

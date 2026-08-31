@@ -29,7 +29,6 @@ export default function PositionCard({
   const plain = toPlainLanguage(position);
 
   if (compact) {
-    // Compact version for list views
     return (
       <div className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
         <div className="flex items-center justify-between gap-3">
@@ -62,13 +61,10 @@ export default function PositionCard({
     );
   }
 
-  // Full version for proposal view
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-      {/* Plain language question - primary */}
       <p className="text-sm font-medium text-white/85">{plain.question}</p>
 
-      {/* Secondary details */}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <span className="text-orange-400">{plain.confidence}</span>
         <span className="text-white/40">{plain.windowLabel}</span>
@@ -78,7 +74,6 @@ export default function PositionCard({
         )}
       </div>
 
-      {/* Outcome badge if showing */}
       {showOutcome && position.outcome && (
         <div className="mt-3">
           <span
@@ -98,7 +93,6 @@ export default function PositionCard({
         </div>
       )}
 
-      {/* Liquidity note */}
       {showLiquidity && position.liquidityNote && (
         <div
           className={`mt-3 rounded-lg px-3 py-2 text-xs ${
@@ -113,7 +107,6 @@ export default function PositionCard({
         </div>
       )}
 
-      {/* Technical details toggle */}
       <button
         onClick={() => setShowTechnical(!showTechnical)}
         className="mt-3 flex items-center gap-1 text-xs text-white/30 transition-colors hover:text-white/50"
