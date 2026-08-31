@@ -2,37 +2,61 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { Sparkles, ShieldCheck, Link2, TrendingUp, Layers, Zap } from "lucide-react";
 
 export default function Hero() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [motionPending, setMotionPending] = useState(true);
-  const demoCardRef = useRef<HTMLElement>(null);
+  const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
+  const [glowOpacity, setGlowOpacity] = useState(0);
+  const heroRef = useRef<HTMLElement>(null);
+  const glowTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Check for reduced motion preference
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) {
       setMotionPending(false);
       return;
     }
 
-    // Fallback timeout to remove motion-pending
-    const timeout = setTimeout(() => setMotionPending(false), 3500);
+    const timeout = setTimeout(() => setMotionPending(false), 2500);
+    return () => clearTimeout(timeout);
+  }, []);
 
-    const handleAnimationEnd = () => {
-      setMotionPending(false);
-      clearTimeout(timeout);
+  // Mouse tracking for hero glow effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!heroRef.current) return;
+
+      const rect = heroRef.current.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+
+      setMousePos({ x, y });
+      setGlowOpacity(1);
+
+      // Clear existing timeout
+      if (glowTimeoutRef.current) {
+        clearTimeout(glowTimeoutRef.current);
+      }
+
+      // Fade out after 3 seconds of no movement
+      glowTimeoutRef.current = setTimeout(() => {
+        setGlowOpacity(0);
+      }, 3000);
     };
 
-    const card = demoCardRef.current;
-    if (card) {
-      card.addEventListener("animationend", handleAnimationEnd, { once: true });
+    const heroElement = heroRef.current;
+    if (heroElement) {
+      heroElement.addEventListener("mousemove", handleMouseMove);
     }
 
     return () => {
-      clearTimeout(timeout);
-      if (card) {
-        card.removeEventListener("animationend", handleAnimationEnd);
+      if (heroElement) {
+        heroElement.removeEventListener("mousemove", handleMouseMove);
+      }
+      if (glowTimeoutRef.current) {
+        clearTimeout(glowTimeoutRef.current);
       }
     };
   }, []);
@@ -54,383 +78,442 @@ export default function Hero() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
 
         :root {
-          --gutter-start: clamp(36px, 4.177vw, 96px);
-          --gutter-end: clamp(36px, 4.04vw, 96px);
-          --header-top: clamp(20px, 2.264vh, 30px);
-          --hero-bottom: clamp(34px, 5.19vh, 64px);
-          --display-size: clamp(58px, 7.64vh, 88px);
-          --display-leading: clamp(72px, 9.34vh, 106px);
-          --copy-size: clamp(14px, 1.70vh, 19px);
-          --copy-leading: clamp(19px, 2.17vh, 24px);
-          --title-copy-gap: clamp(15px, 2.08vh, 24px);
-          --copy-cta-gap: clamp(24px, 3.11vh, 36px);
-          --cta-width: clamp(142px, 15.09vh, 168px);
-          --cta-height: clamp(38px, 3.96vh, 44px);
-          --card-width: clamp(150px, 18.96vh, 215px);
-          --mobile-gutter: clamp(20px, 5vw, 36px);
+          --gutter: clamp(24px, 5vw, 96px);
+          --header-height: 72px;
         }
 
-        .viewport {
-          position: fixed;
-          inset: 0;
-          isolation: isolate;
+        .landing-page {
           background: #000;
-          overflow: hidden;
+          color: #fff;
+          font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+          min-height: 100vh;
         }
 
-        .screen {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          width: 100%;
-          height: 100%;
-          background: #000;
-        }
-
-        .screen::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          z-index: -2;
-          background:
-            linear-gradient(180deg, rgba(0,0,0,.03), transparent 24%, transparent 82%, rgba(0,0,0,.05)),
-            radial-gradient(ellipse at 44% 54%, transparent 30%, rgba(0,0,0,.055) 100%);
-          pointer-events: none;
-        }
-
-        .background-video {
-          position: absolute;
-          inset: 0;
-          z-index: -3;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: center;
-          pointer-events: none;
-          user-select: none;
-        }
-
+        /* Header */
         .header {
-          position: absolute;
-          inset: var(--header-top) var(--gutter-end) auto var(--gutter-start);
-          height: 48px;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: var(--header-height);
           display: flex;
-          align-items: flex-start;
-          white-space: nowrap;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 var(--gutter);
           z-index: 100;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .brand {
-          position: relative;
-          top: 10px;
-          width: 25px;
-          height: 25px;
-          filter: drop-shadow(0 1px 2px rgba(0,0,0,.3));
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          text-decoration: none;
+        }
+
+        .brand-logo {
+          width: 32px;
+          height: 32px;
+        }
+
+        .brand-name {
+          font-size: 20px;
+          font-weight: 600;
+          color: #fff;
+          letter-spacing: -0.5px;
         }
 
         .nav {
           display: flex;
-          gap: clamp(32px, 2.9vw, 43px);
-          margin-left: clamp(36px, 3.03vw, 48px);
-          position: relative;
-          top: 9px;
+          align-items: center;
+          gap: clamp(24px, 3vw, 40px);
         }
 
         .nav-link {
-          font-size: 16px;
-          font-weight: 430;
-          letter-spacing: -0.36px;
-          color: rgba(229,229,230,.77);
-          text-shadow: 0 1px 3px rgba(0,0,0,.55);
+          font-size: 15px;
+          font-weight: 450;
+          color: rgba(255, 255, 255, 0.7);
           text-decoration: none;
-          position: relative;
-          transition: filter 140ms, opacity 140ms;
+          transition: color 200ms;
         }
 
-        .nav-link:first-child {
-          top: -3px;
-        }
-
-        .nav-link:nth-child(4) {
-          margin-left: 1px;
-        }
-
-        .nav-link:hover {
-          filter: brightness(1.08);
-        }
-
+        .nav-link:hover,
         .nav-link.active {
           color: #fff;
         }
 
-        .nav-link.active::after {
-          content: '';
-          position: absolute;
-          bottom: -6px;
-          left: 0;
-          width: 44px;
-          height: 2px;
-          background: rgba(255,255,255,.82);
-        }
-
-        .time-panel {
-          margin-left: auto;
-          width: 211px;
-          height: 48px;
-          padding-left: 8px;
-          border-left: 2px solid rgba(230,230,230,.52);
+        .header-cta {
           display: flex;
-          flex-direction: column;
-          justify-content: center;
+          align-items: center;
+          gap: 12px;
         }
 
-        .time-label {
-          font-size: 15px;
-          font-weight: 420;
-          color: rgba(240,240,240,.77);
-        }
-
-        .time-value {
-          font-size: 15px;
-          font-weight: 440;
-          color: rgba(255,255,255,.93);
-        }
-
-        .sign-up-btn {
-          width: 109px;
-          height: 42px;
-          border-radius: 7px;
-          background: #fff;
-          color: #101010;
-          font-weight: 460;
-          letter-spacing: -0.34px;
-          border: none;
+        .btn-secondary {
+          padding: 10px 20px;
+          font-size: 14px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.8);
+          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
           cursor: pointer;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 1px 5px rgba(0,0,0,.34);
-          margin-left: clamp(20px, 1.95vw, 29px);
-          transition: filter 140ms;
+          transition: all 200ms;
         }
 
-        .sign-up-btn:hover {
-          filter: brightness(1.08);
+        .btn-secondary:hover {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary {
+          padding: 10px 20px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #000;
+          background: #fff;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 200ms;
+        }
+
+        .btn-primary:hover {
+          background: rgba(255, 255, 255, 0.9);
+          transform: translateY(-1px);
         }
 
         .menu-toggle {
           display: none;
-          width: 46px;
-          height: 46px;
-          border-radius: 11px;
-          border: 1px solid rgba(255,255,255,.13);
-          background: linear-gradient(145deg, rgba(24,22,20,.80), rgba(5,12,14,.86));
-          backdrop-filter: blur(14px) saturate(108%);
-          cursor: pointer;
+          width: 44px;
+          height: 44px;
           align-items: center;
           justify-content: center;
-          margin-left: auto;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          cursor: pointer;
         }
 
+        /* Hero Section */
         .hero {
+          position: relative;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          padding: calc(var(--header-height) + 60px) var(--gutter) 80px;
+          overflow: hidden;
+        }
+
+        .hero-bg {
           position: absolute;
           inset: 0;
+          z-index: -2;
         }
 
-        .hero-content {
+        .hero-video {
           position: absolute;
-          left: var(--gutter-start);
-          bottom: var(--hero-bottom);
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-        }
-
-        .hero-title {
-          font-family: Inter, Arial, sans-serif;
-          font-size: var(--display-size);
-          font-weight: 500;
-          line-height: var(--display-leading);
-          font-optical-sizing: auto;
-          letter-spacing: -2.1px;
-          -webkit-text-stroke: .12px currentColor;
-          text-shadow: 0 2px 2px rgba(0,0,0,.44);
-          margin: 0;
-        }
-
-        .line {
-          display: block;
-          overflow: hidden;
-          transform-origin: left center;
-        }
-
-        .line-one {
-          transform: scaleX(.775);
-        }
-
-        .line-one .line-reveal {
-          color: #fff;
-        }
-
-        .line-two {
-          transform: scaleX(.793);
-        }
-
-        .line-two .line-reveal {
-          color: rgba(211, 207, 207, .78);
-        }
-
-        .line-reveal {
-          display: block;
-          white-space: nowrap;
-        }
-
-        .hero-copy {
-          margin-top: var(--title-copy-gap);
-          font-size: var(--copy-size);
-          line-height: var(--copy-leading);
-          font-weight: 350;
-          letter-spacing: .13px;
-          color: rgba(226, 229, 228, .84);
-          text-shadow: 0 1px 3px rgba(0,0,0,.7);
-          width: clamp(390px, 31.67vw, 500px);
-          position: relative;
-          left: 1px;
-        }
-
-        .primary-cta {
-          position: relative;
-          margin-top: var(--copy-cta-gap);
-          width: var(--cta-width);
-          height: var(--cta-height);
-          border-radius: 7px;
-          background: #fff;
-          color: #111;
-          border: none;
-          cursor: pointer;
-          box-shadow: 0 1px 5px rgba(0,0,0,.38);
-          transition: filter 140ms;
-        }
-
-        .primary-cta:hover {
-          filter: brightness(1.08);
-        }
-
-        .primary-cta .label {
-          position: absolute;
-          left: 8.125%;
-          top: 50%;
-          transform: translateY(-50%);
-          font-weight: 450;
-          letter-spacing: -0.3px;
-        }
-
-        .primary-cta .arrow-box {
-          position: absolute;
-          right: 3.125%;
-          top: 14.286%;
-          width: 20.625%;
-          height: 71.429%;
-          border-radius: 7px;
-          background: #070909;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .demo-card {
-          position: absolute;
-          right: var(--gutter-end);
-          bottom: var(--hero-bottom);
-          width: var(--card-width);
-          aspect-ratio: 201 / 265;
-          container-type: inline-size;
-          border: 1px solid rgba(255,255,255,.13);
-          border-radius: clamp(12px, 1.52vh, 18px);
-          background: linear-gradient(145deg, rgba(24,22,20,.80), rgba(5,12,14,.86));
-          box-shadow:
-            0 2px 10px rgba(0,0,0,.44),
-            0 0 0 3px rgba(255,255,255,.035) inset,
-            0 0 0 1px rgba(0,0,0,.9);
-          backdrop-filter: blur(14px) saturate(108%);
-          overflow: hidden;
-        }
-
-        .demo-visual {
-          position: absolute;
-          left: 3.5cqw;
-          top: 4cqw;
-          width: 92.5cqw;
-          height: 92cqw;
-          border-radius: 4cqw;
-          background: #101a1e;
-          overflow: hidden;
-        }
-
-        .demo-visual img {
+          inset: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          filter: brightness(.89) saturate(.93) contrast(1.03);
+          opacity: 0.6;
         }
 
-        .play-btn {
+        .hero-glow {
           position: absolute;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          width: 29cqw;
-          height: 29cqw;
+          inset: 0;
+          pointer-events: none;
+          transition: opacity 3s ease-out;
+        }
+
+        .hero-overlay {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.8) 100%),
+            radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.4) 100%);
+        }
+
+        .hero-content {
+          position: relative;
+          z-index: 1;
+          max-width: 900px;
+        }
+
+        .hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 100px;
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.8);
+          margin-bottom: 32px;
+        }
+
+        .hero-badge-dot {
+          width: 8px;
+          height: 8px;
+          background: #00E28A;
           border-radius: 50%;
-          border: 1px solid rgba(255,255,255,.34);
-          background: rgba(3,5,7,.47);
-          backdrop-filter: blur(4px);
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        .hero-title {
+          font-size: clamp(48px, 8vw, 88px);
+          font-weight: 600;
+          line-height: 1.05;
+          letter-spacing: -2px;
+          margin: 0 0 28px;
+        }
+
+        .hero-title .line {
+          display: block;
+        }
+
+        .hero-title .highlight {
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .hero-description {
+          font-size: clamp(18px, 2vw, 22px);
+          font-weight: 350;
+          line-height: 1.6;
+          color: rgba(255, 255, 255, 0.7);
+          max-width: 600px;
+          margin-bottom: 40px;
+        }
+
+        .hero-actions {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .hero-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 16px 28px;
+          font-size: 16px;
+          font-weight: 500;
+          color: #000;
+          background: #fff;
+          border: none;
+          border-radius: 10px;
           cursor: pointer;
+          transition: all 200ms;
+          text-decoration: none;
+        }
+
+        .hero-cta:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15);
+        }
+
+        .hero-cta-secondary {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: #fff;
+        }
+
+        .hero-cta-secondary:hover {
+          background: rgba(255, 255, 255, 0.12);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Features Section */
+        .section {
+          padding: 120px var(--gutter);
+          position: relative;
+        }
+
+        .section-dark {
+          background: #050508;
+        }
+
+        .section-header {
+          text-align: center;
+          max-width: 700px;
+          margin: 0 auto 80px;
+        }
+
+        .section-label {
+          display: inline-block;
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          color: #00E28A;
+          margin-bottom: 20px;
+        }
+
+        .section-title {
+          font-size: clamp(32px, 5vw, 48px);
+          font-weight: 600;
+          line-height: 1.15;
+          letter-spacing: -1px;
+          margin: 0 0 20px;
+        }
+
+        .section-description {
+          font-size: 18px;
+          color: rgba(255, 255, 255, 0.6);
+          line-height: 1.6;
+        }
+
+        .features-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 24px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .feature-card {
+          padding: 32px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 16px;
+          transition: all 300ms;
+        }
+
+        .feature-card:hover {
+          background: rgba(255, 255, 255, 0.04);
+          border-color: rgba(255, 255, 255, 0.1);
+          transform: translateY(-4px);
+        }
+
+        .feature-icon {
+          width: 48px;
+          height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: filter 140ms;
+          background: rgba(0, 226, 138, 0.1);
+          border-radius: 12px;
+          margin-bottom: 20px;
+          color: #00E28A;
         }
 
-        .play-btn:hover {
-          filter: brightness(1.08);
+        .feature-title {
+          font-size: 20px;
+          font-weight: 600;
+          margin: 0 0 12px;
         }
 
-        .watch-button {
-          position: absolute;
-          left: 3.5cqw;
-          bottom: 4cqw;
-          width: 92.5cqw;
-          height: 16cqw;
-          border-radius: 3cqw;
-          border: 1px solid rgba(255,255,255,.21);
-          background: linear-gradient(145deg, rgba(26,34,36,.86), rgba(16,29,33,.9));
-          backdrop-filter: blur(14px);
+        .feature-description {
+          font-size: 15px;
+          color: rgba(255, 255, 255, 0.55);
+          line-height: 1.6;
+          margin: 0;
+        }
+
+        /* How It Works Section */
+        .steps-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 48px;
+          max-width: 1000px;
+          margin: 0 auto;
+        }
+
+        .step {
+          text-align: center;
+        }
+
+        .step-number {
+          width: 56px;
+          height: 56px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 24px;
+          font-size: 24px;
+          font-weight: 700;
+          color: #00E28A;
+          background: rgba(0, 226, 138, 0.1);
+          border: 1px solid rgba(0, 226, 138, 0.2);
+          border-radius: 16px;
+        }
+
+        .step-title {
+          font-size: 20px;
+          font-weight: 600;
+          margin: 0 0 12px;
+        }
+
+        .step-description {
+          font-size: 15px;
+          color: rgba(255, 255, 255, 0.55);
+          line-height: 1.6;
+          margin: 0;
+        }
+
+        /* Footer */
+        .footer {
+          padding: 60px var(--gutter);
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          background: #000;
+        }
+
+        .footer-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 24px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .footer-brand {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .footer-brand-name {
+          font-size: 18px;
+          font-weight: 600;
+        }
+
+        .footer-links {
+          display: flex;
+          gap: 32px;
+        }
+
+        .footer-link {
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.5);
+          text-decoration: none;
+          transition: color 200ms;
+        }
+
+        .footer-link:hover {
           color: #fff;
-          font-weight: 430;
-          font-size: 4.5cqw;
-          cursor: pointer;
-          transition: filter 140ms;
         }
 
-        .watch-button:hover {
-          filter: brightness(1.08);
+        .footer-copy {
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.4);
         }
 
         /* Entrance animations */
-        @keyframes entrance-brand {
+        @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(7px) scale(.94);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes entrance-nav {
-          from {
-            opacity: 0;
-            transform: translateY(6px);
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
@@ -438,117 +521,33 @@ export default function Hero() {
           }
         }
 
-        @keyframes entrance-action {
-          from {
-            opacity: 0;
-            transform: translateY(8px) scale(.985);
+        .motion-pending .hero-badge {
+          opacity: 0;
+          animation: fadeInUp 600ms ease-out 200ms forwards;
+        }
+
+        .motion-pending .hero-title {
+          opacity: 0;
+          animation: fadeInUp 700ms ease-out 400ms forwards;
+        }
+
+        .motion-pending .hero-description {
+          opacity: 0;
+          animation: fadeInUp 600ms ease-out 600ms forwards;
+        }
+
+        .motion-pending .hero-actions {
+          opacity: 0;
+          animation: fadeInUp 600ms ease-out 800ms forwards;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .nav {
+            display: none;
           }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
 
-        @keyframes entrance-line {
-          from {
-            transform: translate3d(0, 110%, 0) skewY(2deg);
-          }
-          to {
-            transform: translate3d(0, 0, 0) skewY(0);
-          }
-        }
-
-        @keyframes entrance-copy {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes entrance-card {
-          from {
-            opacity: 0;
-            transform: translateY(12px) scale(.968);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        .motion-pending .brand {
-          opacity: 0;
-          animation: entrance-brand 580ms cubic-bezier(.16,1,.3,1) 60ms forwards;
-        }
-
-        .motion-pending .nav-link:nth-child(1) {
-          opacity: 0;
-          animation: entrance-nav 480ms cubic-bezier(.16,1,.3,1) 130ms forwards;
-        }
-        .motion-pending .nav-link:nth-child(2) {
-          opacity: 0;
-          animation: entrance-nav 480ms cubic-bezier(.16,1,.3,1) 175ms forwards;
-        }
-        .motion-pending .nav-link:nth-child(3) {
-          opacity: 0;
-          animation: entrance-nav 480ms cubic-bezier(.16,1,.3,1) 220ms forwards;
-        }
-        .motion-pending .nav-link:nth-child(4) {
-          opacity: 0;
-          animation: entrance-nav 480ms cubic-bezier(.16,1,.3,1) 265ms forwards;
-        }
-
-        .motion-pending .time-panel {
-          opacity: 0;
-          animation: entrance-nav 520ms cubic-bezier(.16,1,.3,1) 180ms forwards;
-        }
-
-        .motion-pending .sign-up-btn {
-          opacity: 0;
-          animation: entrance-action 520ms cubic-bezier(.16,1,.3,1) 220ms forwards;
-        }
-
-        .motion-pending .line-one .line-reveal {
-          transform: translate3d(0, 110%, 0) skewY(2deg);
-          animation: entrance-line 800ms cubic-bezier(.22,1,.36,1) 300ms forwards;
-        }
-
-        .motion-pending .line-two .line-reveal {
-          transform: translate3d(0, 110%, 0) skewY(2deg);
-          animation: entrance-line 850ms cubic-bezier(.22,1,.36,1) 440ms forwards;
-        }
-
-        .motion-pending .hero-copy {
-          opacity: 0;
-          animation: entrance-copy 620ms cubic-bezier(.16,1,.3,1) 740ms forwards;
-        }
-
-        .motion-pending .primary-cta {
-          opacity: 0;
-          animation: entrance-action 560ms cubic-bezier(.16,1,.3,1) 960ms forwards;
-        }
-
-        .motion-pending .demo-card {
-          opacity: 0;
-          transform-origin: 82% 50%;
-          animation: entrance-card 920ms cubic-bezier(.22,1,.36,1) 1040ms forwards;
-        }
-
-        /* Focus styles */
-        button:focus-visible,
-        a:focus-visible {
-          outline: 2px solid #fff;
-          outline-offset: 3px;
-        }
-
-        /* Tablet */
-        @media (min-width: 620px) and (max-width: 790px),
-               (min-width: 620px) and (max-width: 1100px) and (orientation: portrait) {
-          .nav, .time-panel, .sign-up-btn {
+          .header-cta .btn-secondary {
             display: none;
           }
 
@@ -556,276 +555,285 @@ export default function Hero() {
             display: flex;
           }
 
-          .header-actions {
-            position: absolute;
-            top: 56px;
-            right: 0;
-            width: min(324px, calc(100vw - 2 * var(--gutter-end)));
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,.13);
-            background: linear-gradient(145deg, rgba(24,22,20,.85), rgba(5,12,14,.9));
-            backdrop-filter: blur(18px) saturate(110%);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-8px) scale(.985);
-            transition: opacity 200ms, visibility 200ms, transform 200ms;
+          .hero {
+            padding-top: calc(var(--header-height) + 40px);
           }
 
-          .header.menu-open .header-actions {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0) scale(1);
+          .hero-title {
+            letter-spacing: -1px;
           }
 
-          .header.menu-open .nav,
-          .header.menu-open .time-panel,
-          .header.menu-open .sign-up-btn {
-            display: flex;
+          .section {
+            padding: 80px var(--gutter);
           }
 
-          .header.menu-open .nav {
+          .footer-content {
             flex-direction: column;
-            gap: 16px;
-            margin: 0 0 20px 0;
+            text-align: center;
           }
 
-          .header.menu-open .nav-link {
-            top: 0;
-          }
-
-          .header.menu-open .time-panel {
-            border-left: none;
-            border-top: 1px solid rgba(255,255,255,.1);
-            padding: 16px 0 0 0;
-            width: 100%;
-            margin-bottom: 16px;
-          }
-
-          .header.menu-open .sign-up-btn {
-            width: 100%;
-            margin-left: 0;
-          }
-        }
-
-        /* Mobile */
-        @media (max-width: 619px) {
-          :root {
-            --gutter-start: var(--mobile-gutter);
-            --gutter-end: var(--mobile-gutter);
-          }
-
-          .nav, .time-panel, .sign-up-btn {
-            display: none;
-          }
-
-          .menu-toggle {
-            display: flex;
-          }
-
-          .header-actions {
-            position: absolute;
-            top: 56px;
-            right: 0;
-            width: min(340px, calc(100vw - 2 * var(--gutter-end)));
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,.13);
-            background: linear-gradient(145deg, rgba(24,22,20,.85), rgba(5,12,14,.9));
-            backdrop-filter: blur(18px) saturate(110%);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-8px) scale(.985);
-            transition: opacity 200ms, visibility 200ms, transform 200ms;
-          }
-
-          .header.menu-open .header-actions {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0) scale(1);
-          }
-
-          .header.menu-open .nav,
-          .header.menu-open .time-panel,
-          .header.menu-open .sign-up-btn {
-            display: flex;
-          }
-
-          .header.menu-open .nav {
-            flex-direction: column;
-            gap: 16px;
-            margin: 0 0 20px 0;
-          }
-
-          .header.menu-open .nav-link {
-            top: 0;
-          }
-
-          .header.menu-open .time-panel {
-            border-left: none;
-            border-top: 1px solid rgba(255,255,255,.1);
-            padding: 16px 0 0 0;
-            width: 100%;
-            margin-bottom: 16px;
-          }
-
-          .header.menu-open .sign-up-btn {
-            width: 100%;
-            margin-left: 0;
-          }
-
-          .line-one {
-            transform: scaleX(.78);
-          }
-
-          .line-two {
-            transform: scaleX(.55);
-          }
-
-          .hero-copy br {
-            display: none;
-          }
-
-          .hero-copy {
-            width: 100%;
-            max-width: 340px;
-          }
-
-          .demo-card {
-            top: clamp(176px, 32svh, 300px);
-            bottom: auto;
-            right: var(--gutter-end);
+          .footer-links {
+            flex-wrap: wrap;
+            justify-content: center;
           }
         }
       `}</style>
 
-      <main className={`viewport ${motionPending ? "motion-pending" : ""}`}>
-        <section className="screen" id="screen">
-          {/* Background Video */}
-          <video
-            className="background-video"
-            autoPlay
-            muted
-            loop
-            playsInline
-            disablePictureInPicture
-            aria-hidden="true"
-          >
-            <source
-              src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260808_064556_051587f1-74a1-4336-8c05-4dde3594ed05.mp4"
-              type="video/mp4"
-            />
-          </video>
+      <div className={`landing-page ${motionPending ? "motion-pending" : ""}`}>
+        {/* Header */}
+        <header className="header">
+          <Link href="/" className="brand">
+            <svg className="brand-logo" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="16" fill="#00E28A" />
+              <path d="M16 8L10 14L16 12L22 14L16 8Z" fill="#000" />
+              <path d="M10 14L16 20V12L10 14Z" fill="#000" fillOpacity="0.4" />
+              <path d="M22 14L16 12V20L22 14Z" fill="#000" fillOpacity="0.7" />
+              <path d="M16 20L10 14L8 20L16 26L24 20L22 14L16 20Z" fill="#000" />
+            </svg>
+            <span className="brand-name">Basket</span>
+          </Link>
 
-          {/* Header */}
-          <header className={`header ${menuOpen ? "menu-open" : ""}`}>
-            {/* Brand Logo */}
-            <Link href="/" className="brand" aria-label="Basket home">
-              <svg viewBox="0 0 25 25" fill="none">
-                <circle cx="12.5" cy="12.5" r="12.5" fill="#ededed" />
-                <path d="M12.5 4L8 10L12.5 8L17 10L12.5 4Z" fill="#050606" />
-                <path d="M8 10L12.5 14L12.5 8L8 10Z" fill="#737778" />
-                <path d="M17 10L12.5 8L12.5 14L17 10Z" fill="#fafafa" />
-                <path d="M12.5 14L8 10L6 16L12.5 21L19 16L17 10L12.5 14Z" fill="#0a0b0b" />
-              </svg>
+          <nav className="nav">
+            <a href="#" className="nav-link active">Home</a>
+            <a href="#features" className="nav-link">Features</a>
+            <a href="#how-it-works" className="nav-link">How It Works</a>
+            <a href="#" className="nav-link">Docs</a>
+          </nav>
+
+          <div className="header-cta">
+            <button className="btn-secondary">Sign In</button>
+            <Link href="/basket">
+              <button className="btn-primary">Launch App</button>
             </Link>
+          </div>
 
-            {/* Header Actions (collapsible on mobile) */}
-            <div className="header-actions" id="tablet-navigation">
-              <nav className="nav">
-                <a href="#" className="nav-link active">Home</a>
-                <a href="#about" className="nav-link">About</a>
-                <a href="#services" className="nav-link">Services</a>
-                <a href="#contact" className="nav-link">Contact</a>
-              </nav>
+          <button
+            className="menu-toggle"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+              {menuOpen ? (
+                <>
+                  <line x1="2" y1="2" x2="18" y2="12" stroke="white" strokeWidth="2" />
+                  <line x1="2" y1="12" x2="18" y2="2" stroke="white" strokeWidth="2" />
+                </>
+              ) : (
+                <>
+                  <line x1="0" y1="3" x2="20" y2="3" stroke="white" strokeWidth="2" />
+                  <line x1="0" y1="11" x2="20" y2="11" stroke="white" strokeWidth="2" />
+                </>
+              )}
+            </svg>
+          </button>
+        </header>
 
-              <div className="time-panel">
-                <span className="time-label">Timezone</span>
-                <span className="time-value">9:47 PM&nbsp; • &nbsp;14 July 2026</span>
-              </div>
-
-              <Link href="/basket">
-                <button className="sign-up-btn">Sign Up</button>
-              </Link>
-            </div>
-
-            {/* Menu Toggle (mobile/tablet) */}
-            <button
-              className="menu-toggle"
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-expanded={menuOpen}
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
+        {/* Hero Section */}
+        <section className="hero" ref={heroRef}>
+          <div className="hero-bg">
+            <video
+              className="hero-video"
+              autoPlay
+              muted
+              loop
+              playsInline
+              disablePictureInPicture
+              aria-hidden="true"
             >
-              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-                {menuOpen ? (
-                  <>
-                    <line x1="2" y1="2" x2="18" y2="12" stroke="white" strokeWidth="2" />
-                    <line x1="2" y1="12" x2="18" y2="2" stroke="white" strokeWidth="2" />
-                  </>
-                ) : (
-                  <>
-                    <line x1="0" y1="3" x2="20" y2="3" stroke="white" strokeWidth="2" />
-                    <line x1="0" y1="11" x2="20" y2="11" stroke="white" strokeWidth="2" />
-                  </>
-                )}
-              </svg>
-            </button>
-          </header>
+              <source
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260808_064556_051587f1-74a1-4336-8c05-4dde3594ed05.mp4"
+                type="video/mp4"
+              />
+            </video>
+            <div
+              className="hero-glow"
+              style={{
+                opacity: glowOpacity,
+                background: `radial-gradient(600px circle at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(0, 226, 138, 0.15), transparent 40%)`,
+              }}
+            />
+            <div className="hero-overlay" />
+          </div>
 
-          {/* Hero Section */}
-          <section className="hero">
-            <div className="hero-content">
-              <h1 className="hero-title">
-                <span className="line line-one">
-                  <span className="line-reveal">One Call,</span>
-                </span>
-                <span className="line line-two">
-                  <span className="line-reveal">Many Windows.</span>
-                </span>
-              </h1>
-
-              <p className="hero-copy">
-                Your bets are scattered across single outcomes.<br />
-                Basket bring them into one diversified signal, so every<br />
-                decision is backed by risk you actually understand.
-              </p>
-
-              <Link href="/basket">
-                <button className="primary-cta">
-                  <span className="label">Get Started</span>
-                  <span className="arrow-box">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path
-                        d="M1 7H13M13 7L7 1M13 7L7 13"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                </button>
-              </Link>
+          <div className="hero-content">
+            <div className="hero-badge">
+              <span className="hero-badge-dot" />
+              Live on Somnia Testnet
             </div>
 
-            {/* Demo Card */}
-            <article className="demo-card" ref={demoCardRef}>
-              <div className="demo-visual">
-                <img
-                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23ff4444'/%3E%3Cstop offset='50%25' stop-color='%23440066'/%3E%3Cstop offset='100%25' stop-color='%234444ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='%23101a1e' width='200' height='200'/%3E%3Ccircle cx='60' cy='80' r='60' fill='url(%23g1)' opacity='0.7'/%3E%3Ccircle cx='140' cy='120' r='50' fill='%234444ff' opacity='0.5'/%3E%3Ccircle cx='100' cy='100' r='40' fill='%23ff4444' opacity='0.4'/%3E%3C/svg%3E"
-                  alt="Abstract visualization"
-                />
-                <button className="play-btn" aria-label="Play demo">
-                  <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
-                    <path d="M0 0L12 7L0 14V0Z" fill="white" />
-                  </svg>
-                </button>
-              </div>
-              <button className="watch-button">Watch Demo</button>
-            </article>
-          </section>
+            <h1 className="hero-title">
+              <span className="line">One Call.</span>
+              <span className="line highlight">Many Windows.</span>
+              <span className="line highlight">Not One Coin Flip.</span>
+            </h1>
+
+            <p className="hero-description">
+              Basket turns a single directional view into several smaller, correlated
+              DreamDEX Event Contracts — reasoned out loud by AI, before you ever
+              commit a dollar.
+            </p>
+
+            <div className="hero-actions">
+              <Link href="/basket" className="hero-cta">
+                Build a Basket
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8H13M13 8L8 3M13 8L8 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+              <a href="#how-it-works" className="hero-cta hero-cta-secondary">
+                See How It Works
+              </a>
+            </div>
+          </div>
         </section>
-      </main>
+
+        {/* Features Section */}
+        <section className="section section-dark" id="features">
+          <div className="section-header">
+            <span className="section-label">Features</span>
+            <h2 className="section-title">Spread the Risk, Keep the Upside</h2>
+            <p className="section-description">
+              Every basket is AI-constructed, on-chain, and designed to reduce variance
+              without sacrificing your thesis.
+            </p>
+          </div>
+
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Sparkles size={24} />
+              </div>
+              <h3 className="feature-title">AI-Constructed</h3>
+              <p className="feature-description">
+                Windows selected and explained before you commit. No black box — see the
+                reasoning behind every position in your basket.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <ShieldCheck size={24} />
+              </div>
+              <h3 className="feature-title">Risk-Smoothed</h3>
+              <p className="feature-description">
+                Several smaller positions instead of one all-or-nothing call.
+                Statistical variance reduction you can measure.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Link2 size={24} />
+              </div>
+              <h3 className="feature-title">Fully On-Chain</h3>
+              <p className="feature-description">
+                Every window resolves permissionlessly on DreamDEX. Your positions,
+                your keys, verifiable outcomes.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <TrendingUp size={24} />
+              </div>
+              <h3 className="feature-title">Real-Time Markets</h3>
+              <p className="feature-description">
+                Live price feeds from BTC and ETH binary markets with multiple
+                time windows — from 5 minutes to 24 hours.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Layers size={24} />
+              </div>
+              <h3 className="feature-title">Cross-Asset Baskets</h3>
+              <p className="feature-description">
+                Combine BTC and ETH positions in a single basket for even more
+                diversification across correlated assets.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Zap size={24} />
+              </div>
+              <h3 className="feature-title">Instant Settlement</h3>
+              <p className="feature-description">
+                Markets resolve automatically. Winning positions can be redeemed
+                immediately — no waiting, no counterparty risk.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="section" id="how-it-works">
+          <div className="section-header">
+            <span className="section-label">How It Works</span>
+            <h2 className="section-title">From Thesis to Basket in Minutes</h2>
+            <p className="section-description">
+              Tell us your view, set your parameters, and let AI do the heavy lifting.
+            </p>
+          </div>
+
+          <div className="steps-grid">
+            <div className="step">
+              <div className="step-number">1</div>
+              <h3 className="step-title">Set Your Parameters</h3>
+              <p className="step-description">
+                Choose your asset (BTC, ETH, or both), number of windows (2-5),
+                max spend, and risk tolerance.
+              </p>
+            </div>
+
+            <div className="step">
+              <div className="step-number">2</div>
+              <h3 className="step-title">Review AI Proposal</h3>
+              <p className="step-description">
+                Our AI analyzes live markets and constructs a diversified basket
+                with full reasoning and risk metrics.
+              </p>
+            </div>
+
+            <div className="step">
+              <div className="step-number">3</div>
+              <h3 className="step-title">Approve & Execute</h3>
+              <p className="step-description">
+                Sign the transactions to place your orders. Each position is
+                tracked and monitored automatically.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="footer">
+          <div className="footer-content">
+            <div className="footer-brand">
+              <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="16" fill="#00E28A" />
+                <path d="M16 8L10 14L16 12L22 14L16 8Z" fill="#000" />
+                <path d="M10 14L16 20V12L10 14Z" fill="#000" fillOpacity="0.4" />
+                <path d="M22 14L16 12V20L22 14Z" fill="#000" fillOpacity="0.7" />
+                <path d="M16 20L10 14L8 20L16 26L24 20L22 14L16 20Z" fill="#000" />
+              </svg>
+              <span className="footer-brand-name">Basket</span>
+            </div>
+
+            <div className="footer-links">
+              <a href="#" className="footer-link">Documentation</a>
+              <a href="#" className="footer-link">GitHub</a>
+              <a href="#" className="footer-link">Twitter</a>
+              <a href="#" className="footer-link">Discord</a>
+            </div>
+
+            <p className="footer-copy">
+              © 2026 Basket. Built on Somnia.
+            </p>
+          </div>
+        </footer>
+      </div>
     </>
   );
 }
