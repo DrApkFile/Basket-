@@ -197,16 +197,17 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-white/10 p-5 text-center">
-        <p className="text-sm text-white/60">Loading basket...</p>
+      <div className="rounded-2xl border border-white/6 bg-white/[0.02] p-8 text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-orange-500" />
+        <p className="mt-4 text-sm text-white/50">Loading basket...</p>
       </div>
     );
   }
 
   if (!basket) {
     return (
-      <div className="rounded-xl border border-red-500/30 p-5 text-center">
-        <p className="text-sm text-red-400">Basket not found</p>
+      <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
+        <p className="text-red-400">Basket not found</p>
       </div>
     );
   }
@@ -242,14 +243,17 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 p-5">
+    <div className="rounded-2xl border border-white/6 bg-gradient-to-br from-white/[0.03] to-white/[0.01] p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-display text-sm font-bold text-white/80">
-            {basket.asset} BASKET
-          </h3>
-          <p className="mt-1 font-mono text-xs text-white/40">{basketId.slice(0, 8)}...</p>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-green-500/10 text-lg font-bold">
+            {basket.asset === "BTC" ? "₿" : basket.asset === "ETH" ? "Ξ" : "⚡"}
+          </div>
+          <div>
+            <h3 className="font-semibold">{basket.asset} Basket</h3>
+            <p className="font-mono text-xs text-white/40">{basketId.slice(0, 12)}...</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {/* Share to Community toggle */}
@@ -257,12 +261,11 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
             <button
               onClick={handleToggleShare}
               disabled={sharing}
-              className={`rounded px-2 py-1 text-[10px] transition-colors ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                 basket?.shared
-                  ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                  : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
+                  ? "bg-green-500/15 text-green-400 hover:bg-green-500/25"
+                  : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
               }`}
-              title={basket?.shared ? "Remove from Community" : "Share to Community"}
             >
               {sharing ? "..." : basket?.shared ? "Shared ✓" : "Share"}
             </button>
@@ -272,27 +275,34 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
             onClick={() => {
               const url = `${window.location.origin}/basket/${basketId}`;
               navigator.clipboard.writeText(url);
-              alert("Link copied!");
             }}
-            className="rounded bg-white/5 px-2 py-1 text-[10px] text-white/50 hover:bg-white/10 hover:text-white/70"
+            className="rounded-lg bg-white/5 p-2 text-white/50 transition-all hover:bg-white/10 hover:text-white"
             title="Copy link"
           >
-            🔗
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
           </button>
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase ${
               basket.status === "redeemed"
-                ? "bg-green-500/20 text-green-400"
+                ? "bg-green-500/15 text-green-400"
                 : basket.status === "settled"
-                ? "bg-blue-500/20 text-blue-400"
-                : "bg-yellow-500/20 text-yellow-400"
+                ? "bg-blue-500/15 text-blue-400"
+                : "bg-yellow-500/15 text-yellow-400"
             }`}
           >
-            {basket.status.toUpperCase()}
+            {basket.status}
           </span>
           {onClose && (
-            <button onClick={onClose} className="text-white/40 hover:text-white/60">
-              ✕
+            <button
+              onClick={onClose}
+              className="rounded-lg bg-white/5 p-2 text-white/40 transition-all hover:bg-white/10 hover:text-white"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
             </button>
           )}
         </div>
@@ -300,36 +310,37 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
 
       {/* AI Narration */}
       {basket.narration && (
-        <div className="mt-4 rounded-lg bg-white/5 p-3">
-          <div className="text-xs font-bold text-white/60">AI MONITOR</div>
-          <p className="mt-1 text-sm text-white/80">{basket.narration}</p>
+        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-orange-400">
+            AI Monitor
+          </div>
+          <p className="text-sm leading-relaxed text-white/70">{basket.narration}</p>
         </div>
       )}
 
       {/* Summary Stats */}
       {narration?.summary && (
-        <div className="mt-4 grid grid-cols-4 gap-3 text-center text-xs">
-          <div className="rounded bg-white/5 p-2">
-            <div className="text-white/40">Wins</div>
-            <div className="font-mono text-green-400">{narration.summary.wins}</div>
+        <div className="mt-4 grid grid-cols-4 gap-3">
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+            <div className="text-[10px] text-white/40">Wins</div>
+            <div className="mt-1 font-mono text-lg font-semibold text-green-400">{narration.summary.wins}</div>
           </div>
-          <div className="rounded bg-white/5 p-2">
-            <div className="text-white/40">Losses</div>
-            <div className="font-mono text-red-400">{narration.summary.losses}</div>
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+            <div className="text-[10px] text-white/40">Losses</div>
+            <div className="mt-1 font-mono text-lg font-semibold text-red-400">{narration.summary.losses}</div>
           </div>
-          <div className="rounded bg-white/5 p-2">
-            <div className="text-white/40">Pending</div>
-            <div className="font-mono text-yellow-400">{narration.summary.pending}</div>
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+            <div className="text-[10px] text-white/40">Pending</div>
+            <div className="mt-1 font-mono text-lg font-semibold text-yellow-400">{narration.summary.pending}</div>
           </div>
-          <div className="rounded bg-white/5 p-2">
-            <div className="text-white/40">Net P&L</div>
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+            <div className="text-[10px] text-white/40">Net P&L</div>
             <div
-              className={`font-mono ${
+              className={`mt-1 font-mono text-lg font-semibold ${
                 narration.summary.netPnL >= 0 ? "text-green-400" : "text-red-400"
               }`}
             >
-              {narration.summary.netPnL >= 0 ? "+" : ""}
-              ${narration.summary.netPnL.toFixed(2)}
+              {narration.summary.netPnL >= 0 ? "+" : ""}${narration.summary.netPnL.toFixed(2)}
             </div>
           </div>
         </div>
@@ -338,8 +349,10 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       {/* Legs - Plain language */}
       {narration?.legs && (
         <div className="mt-4">
-          <div className="text-xs font-bold text-white/60">POSITIONS</div>
-          <ul className="mt-2 space-y-1.5">
+          <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+            Positions
+          </div>
+          <ul className="space-y-2">
             {narration.legs.map((leg) => (
               <li key={leg.marketId}>
                 <PositionCard
@@ -347,7 +360,7 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
                     symbol: leg.symbol,
                     side: leg.side as "YES" | "NO",
                     expiry: leg.expiry,
-                    price: leg.price, // Use stored original price
+                    price: leg.price,
                     quantity: leg.filled,
                     interval: leg.interval,
                     outcome: leg.outcome,
@@ -368,28 +381,29 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       {canRedeem && !redeeming && (
         <button
           onClick={handleRedeem}
-          className="mt-4 w-full rounded-full bg-green-600/20 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-600/30"
+          className="mt-5 w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-green-500/25 transition-all hover:-translate-y-0.5 hover:shadow-green-500/40"
         >
-          REDEEM WINNING LEGS
+          Redeem Winning Legs
         </button>
       )}
 
       {redeeming && (
-        <div className="mt-4 rounded bg-white/5 p-3 text-center text-sm text-white/60">
-          {redeemProgress}
+        <div className="mt-5 flex items-center justify-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-orange-500" />
+          <span className="text-sm text-white/60">{redeemProgress}</span>
         </div>
       )}
 
-      {/* All settled with no wins - nothing to redeem */}
+      {/* All settled with no wins */}
       {allSettled && !canRedeem && !redeeming && basket.status !== "redeemed" && (
-        <div className="mt-4 rounded-lg border border-white/10 bg-white/5 p-3 text-center">
-          <p className="text-xs text-white/60">
+        <div className="mt-5 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
+          <p className="text-sm text-white/50">
             {narration?.summary?.losses === narration?.summary?.total
               ? "All positions lost — nothing to redeem."
               : "No winning positions to redeem."}
           </p>
-          <p className="mt-1 text-[10px] text-white/40">
-            Lost bets pay out $0. Only winning or voided positions can be redeemed.
+          <p className="mt-2 text-xs text-white/30">
+            Lost bets pay $0. Only winning or voided positions can be redeemed.
           </p>
         </div>
       )}
@@ -397,8 +411,8 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       {/* Next expiry countdown */}
       {narration?.summary?.minutesToNextExpiry != null &&
         narration?.summary?.minutesToNextExpiry > 0 && (
-          <p className="mt-3 text-center text-xs text-white/40">
-            Next leg expires in {narration?.summary?.minutesToNextExpiry} minutes
+          <p className="mt-4 text-center text-xs text-white/40">
+            Next position expires in <span className="font-medium text-orange-400">{narration?.summary?.minutesToNextExpiry}m</span>
           </p>
         )}
     </div>

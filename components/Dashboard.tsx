@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import Link from "next/link";
-import MarketCard from "./MarketCard";
 import MarketDetailModal from "./MarketDetailModal";
 import BasketModal from "./BasketModal";
 import CommunityPanel from "./CommunityPanel";
@@ -28,23 +27,8 @@ interface UserBasket extends BasketDoc {
   redeemableCount: number;
 }
 
-type MarketFilter = "all" | "live" | "upcoming";
-type Tab = "home" | "community" | "baskets";
-
-function Logo() {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600">
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="white" strokeWidth="2">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
-      </div>
-      <span className="font-display text-lg font-bold text-white">Basket</span>
-    </div>
-  );
-}
+type MarketFilter = "all" | "btc" | "eth";
+type Tab = "markets" | "community" | "baskets";
 
 export default function Dashboard() {
   const { address } = useAccount();
@@ -52,13 +36,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<MarketFilter>("all");
-  const [activeTab, setActiveTab] = useState<Tab>("home");
+  const [activeTab, setActiveTab] = useState<Tab>("markets");
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
   const [userBaskets, setUserBaskets] = useState<UserBasket[]>([]);
   const [basketsLoading, setBasketsLoading] = useState(false);
 
-  // Fetch markets
   useEffect(() => {
     async function fetchMarkets() {
       try {
@@ -73,13 +56,11 @@ export default function Dashboard() {
         setLoading(false);
       }
     }
-
     fetchMarkets();
     const interval = setInterval(fetchMarkets, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch user baskets
   const fetchUserBaskets = useCallback(async () => {
     if (!address) return;
     setBasketsLoading(true);
@@ -100,202 +81,659 @@ export default function Dashboard() {
     fetchUserBaskets();
   }, [fetchUserBaskets]);
 
-  // Filter markets
   const filteredMarkets = markets.filter((m) => {
-    if (filter === "live") return m.expiresInMin <= 30;
-    if (filter === "upcoming") return m.expiresInMin > 30;
+    if (filter === "btc") return m.asset === "BTC";
+    if (filter === "eth") return m.asset === "ETH";
     return true;
   });
 
-  // Get unique assets for modal
   const availableAssets = [...new Set(markets.map((m) => m.asset))];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      {/* Navbar */}
-      <header className="border-b border-white/5 bg-[#0a0a0f]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Logo />
+    <>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
 
-          {/* Tabs */}
-          <nav className="flex items-center gap-1 rounded-lg bg-white/5 p-1">
+        :root {
+          --accent-green: #00E28A;
+          --accent-orange: #FF6B35;
+          --accent-gradient: linear-gradient(135deg, var(--accent-orange), var(--accent-green));
+          --glass-bg: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(0, 226, 138, 0.04));
+          --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        .dashboard {
+          min-height: 100vh;
+          background: #030305;
+          color: #fff;
+          font-family: Inter, -apple-system, sans-serif;
+        }
+
+        /* Glass Effect */
+        .glass {
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+        }
+
+        .glass-strong {
+          background: linear-gradient(145deg, rgba(255, 107, 53, 0.12), rgba(0, 226, 138, 0.06));
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(24px) saturate(200%);
+          box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        /* Header */
+        .dash-header {
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 32px;
+          background: rgba(3, 3, 5, 0.85);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .dash-brand {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          text-decoration: none;
+        }
+
+        .dash-brand-name {
+          font-size: 22px;
+          font-weight: 700;
+          background: var(--accent-gradient);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .dash-tabs {
+          display: flex;
+          gap: 4px;
+          padding: 4px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 14px;
+        }
+
+        .dash-tab {
+          padding: 10px 20px;
+          font-size: 14px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.5);
+          background: transparent;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 200ms;
+        }
+
+        .dash-tab:hover {
+          color: rgba(255, 255, 255, 0.8);
+        }
+
+        .dash-tab.active {
+          color: #000;
+          background: var(--accent-gradient);
+          box-shadow: 0 2px 12px rgba(255, 107, 53, 0.3);
+        }
+
+        .dash-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        /* Glass Connect Button Override */
+        .connect-wrapper [data-testid="rk-connect-button"] {
+          background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(0, 226, 138, 0.1)) !important;
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          backdrop-filter: blur(20px) !important;
+        }
+
+        .create-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 24px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #000;
+          background: var(--accent-gradient);
+          border: none;
+          border-radius: 12px;
+          cursor: pointer;
+          box-shadow: 0 4px 20px rgba(255, 107, 53, 0.35);
+          transition: all 250ms;
+        }
+
+        .create-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 30px rgba(255, 107, 53, 0.45);
+        }
+
+        .create-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        /* Main Layout */
+        .dash-main {
+          padding: 32px;
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+
+        /* Hero Stats */
+        .dash-hero {
+          display: flex;
+          gap: 20px;
+          margin-bottom: 40px;
+        }
+
+        .stat-card {
+          flex: 1;
+          padding: 28px;
+          border-radius: 20px;
+        }
+
+        .stat-label {
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.5);
+          margin-bottom: 8px;
+        }
+
+        .stat-value {
+          font-size: 32px;
+          font-weight: 700;
+          background: var(--accent-gradient);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .stat-change {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 8px;
+          padding: 4px 10px;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--accent-green);
+          background: rgba(0, 226, 138, 0.1);
+          border-radius: 6px;
+        }
+
+        /* Markets Section */
+        .section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+        }
+
+        .section-title {
+          font-size: 20px;
+          font-weight: 600;
+        }
+
+        .filter-pills {
+          display: flex;
+          gap: 8px;
+        }
+
+        .filter-pill {
+          padding: 8px 16px;
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.5);
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 200ms;
+        }
+
+        .filter-pill:hover {
+          color: rgba(255, 255, 255, 0.8);
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-pill.active {
+          color: #fff;
+          background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(0, 226, 138, 0.1));
+          border-color: rgba(255, 107, 53, 0.3);
+        }
+
+        /* Market Grid */
+        .market-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 16px;
+        }
+
+        .market-card {
+          position: relative;
+          padding: 24px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+          overflow: hidden;
+        }
+
+        .market-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse at 30% 0%, rgba(255, 107, 53, 0.1), transparent 60%);
+          opacity: 0;
+          transition: opacity 300ms;
+        }
+
+        .market-card:hover {
+          transform: translateY(-4px);
+          border-color: rgba(255, 107, 53, 0.2);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .market-card:hover::before {
+          opacity: 1;
+        }
+
+        .market-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+          position: relative;
+        }
+
+        .market-asset {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .market-asset-icon {
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(0, 226, 138, 0.1));
+          border-radius: 12px;
+          font-size: 18px;
+          font-weight: 700;
+        }
+
+        .market-asset-name {
+          font-size: 18px;
+          font-weight: 600;
+        }
+
+        .market-interval {
+          padding: 6px 12px;
+          font-size: 12px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.7);
+          background: rgba(255, 255, 255, 0.06);
+          border-radius: 6px;
+        }
+
+        .market-expiry {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding-top: 16px;
+          border-top: 1px solid rgba(255, 255, 255, 0.04);
+          position: relative;
+        }
+
+        .market-expiry-item {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .market-expiry-label {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.4);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .market-expiry-value {
+          font-size: 15px;
+          font-weight: 600;
+        }
+
+        .market-expiry-value.urgent {
+          color: var(--accent-orange);
+        }
+
+        .market-expiry-value.soon {
+          color: #FFB800;
+        }
+
+        .market-trade-btn {
+          margin-left: auto;
+          padding: 10px 20px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #000;
+          background: var(--accent-gradient);
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          opacity: 0;
+          transform: translateY(4px);
+          transition: all 200ms;
+        }
+
+        .market-card:hover .market-trade-btn {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        /* Empty State */
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 80px 40px;
+          text-align: center;
+        }
+
+        .empty-icon {
+          width: 80px;
+          height: 80px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(0, 226, 138, 0.05));
+          border-radius: 24px;
+          margin-bottom: 24px;
+          font-size: 32px;
+        }
+
+        .empty-title {
+          font-size: 20px;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .empty-desc {
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Loading */
+        .loading-state {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 80px;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid rgba(255, 255, 255, 0.1);
+          border-top-color: var(--accent-orange);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        /* Baskets Tab */
+        .baskets-content {
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+          .dash-header {
+            padding: 12px 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+          }
+
+          .dash-tabs {
+            order: 3;
+            width: 100%;
+            justify-content: center;
+          }
+
+          .dash-main {
+            padding: 20px 16px;
+          }
+
+          .dash-hero {
+            flex-direction: column;
+          }
+
+          .market-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
+      <div className="dashboard">
+        {/* Header */}
+        <header className="dash-header">
+          <Link href="/" className="dash-brand">
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+              <defs>
+                <linearGradient id="dashLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#FF6B35" />
+                  <stop offset="100%" stopColor="#00E28A" />
+                </linearGradient>
+              </defs>
+              <circle cx="18" cy="18" r="18" fill="url(#dashLogoGrad)" />
+              <path d="M18 8L11 15L18 13L25 15L18 8Z" fill="#000" />
+              <path d="M11 15L18 22V13L11 15Z" fill="#000" fillOpacity="0.4" />
+              <path d="M25 15L18 13V22L25 15Z" fill="#000" fillOpacity="0.7" />
+              <path d="M18 22L11 15L9 22L18 28L27 22L25 15L18 22Z" fill="#000" />
+            </svg>
+            <span className="dash-brand-name">Basket</span>
+          </Link>
+
+          <div className="dash-tabs">
             <button
-              onClick={() => setActiveTab("home")}
-              className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === "home"
-                  ? "bg-red-600 text-white"
-                  : "text-white/60 hover:text-white"
-              }`}
+              className={`dash-tab ${activeTab === "markets" ? "active" : ""}`}
+              onClick={() => setActiveTab("markets")}
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-              </svg>
-              Home
+              Markets
             </button>
             <button
+              className={`dash-tab ${activeTab === "community" ? "active" : ""}`}
               onClick={() => setActiveTab("community")}
-              className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === "community"
-                  ? "bg-red-600 text-white"
-                  : "text-white/60 hover:text-white"
-              }`}
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-              </svg>
               Community
             </button>
             {address && (
               <button
+                className={`dash-tab ${activeTab === "baskets" ? "active" : ""}`}
                 onClick={() => setActiveTab("baskets")}
-                className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === "baskets"
-                    ? "bg-red-600 text-white"
-                    : "text-white/60 hover:text-white"
-                }`}
               >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <path d="M16 10a4 4 0 01-8 0" />
-                </svg>
                 My Baskets
-                {userBaskets.length > 0 && (
-                  <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">
-                    {userBaskets.length}
-                  </span>
-                )}
               </button>
             )}
-          </nav>
-
-          <ConnectButton />
-        </div>
-      </header>
-
-      {/* Content */}
-      {activeTab === "home" && (
-        <main className="mx-auto max-w-7xl px-6 py-8">
-          {/* Title Section */}
-          <div className="mb-8">
-            <p className="text-xs font-semibold uppercase tracking-wider text-red-400">
-              LIVE MARKETS
-            </p>
-            <h1 className="mt-2 flex items-center gap-3 text-3xl font-bold text-white">
-              <span className="text-4xl">🏆</span>
-              Crypto Price Predictions
-            </h1>
-            <p className="mt-2 text-white/50">
-              Predict price movements in real time
-            </p>
           </div>
 
-          {/* Filters + Create Button */}
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex gap-2">
-              {(["all", "live", "upcoming"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors ${
-                    filter === f
-                      ? "bg-red-600 text-white"
-                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-
+          <div className="dash-header-actions">
             <button
+              className="create-btn"
               onClick={() => setIsBasketModalOpen(true)}
               disabled={!address}
-              className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
             >
-              + Create Basket
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+              Create Basket
             </button>
+            <div className="connect-wrapper">
+              <ConnectButton />
+            </div>
           </div>
+        </header>
 
-          {/* Loading State */}
-          {loading && (
-            <div className="flex h-64 items-center justify-center">
-              <p className="text-sm text-white/40">Loading markets...</p>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-              {error}
-            </div>
-          )}
-
-          {/* Markets Grid */}
-          {!loading && !error && (
+        {/* Main */}
+        <main className="dash-main">
+          {activeTab === "markets" && (
             <>
-              {filteredMarkets.length === 0 ? (
-                <div className="flex h-64 items-center justify-center">
-                  <p className="text-sm text-white/40">No markets available</p>
+              {/* Stats */}
+              <div className="dash-hero">
+                <div className="stat-card glass">
+                  <div className="stat-label">Live Markets</div>
+                  <div className="stat-value">{markets.length}</div>
+                  <div className="stat-change">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 9V3M6 3L3 6M6 3L9 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    Active now
+                  </div>
+                </div>
+                <div className="stat-card glass">
+                  <div className="stat-label">Your Baskets</div>
+                  <div className="stat-value">{userBaskets.length}</div>
+                </div>
+                <div className="stat-card glass">
+                  <div className="stat-label">Pending Positions</div>
+                  <div className="stat-value">
+                    {userBaskets.reduce((sum, b) => sum + b.pendingCount, 0)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Markets */}
+              <div className="section-header">
+                <h2 className="section-title">Live Markets</h2>
+                <div className="filter-pills">
+                  <button
+                    className={`filter-pill ${filter === "all" ? "active" : ""}`}
+                    onClick={() => setFilter("all")}
+                  >
+                    All
+                  </button>
+                  <button
+                    className={`filter-pill ${filter === "btc" ? "active" : ""}`}
+                    onClick={() => setFilter("btc")}
+                  >
+                    BTC
+                  </button>
+                  <button
+                    className={`filter-pill ${filter === "eth" ? "active" : ""}`}
+                    onClick={() => setFilter("eth")}
+                  >
+                    ETH
+                  </button>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="loading-state">
+                  <div className="loading-spinner" />
+                </div>
+              ) : error ? (
+                <div className="empty-state glass">
+                  <div className="empty-icon">⚠️</div>
+                  <h3 className="empty-title">Failed to Load Markets</h3>
+                  <p className="empty-desc">{error}</p>
+                </div>
+              ) : filteredMarkets.length === 0 ? (
+                <div className="empty-state glass">
+                  <div className="empty-icon">📊</div>
+                  <h3 className="empty-title">No Markets Available</h3>
+                  <p className="empty-desc">Check back soon for new trading opportunities.</p>
                 </div>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredMarkets.map((market) => (
-                    <MarketCard
-                      key={market.id}
-                      market={market}
-                      onClick={() => setSelectedMarketId(market.id)}
-                    />
-                  ))}
+                <div className="market-grid">
+                  {filteredMarkets.map((market) => {
+                    const isUrgent = market.expiresInMin < 5;
+                    const isSoon = market.expiresInMin < 15;
+                    return (
+                      <div
+                        key={market.id}
+                        className="market-card glass"
+                        onClick={() => setSelectedMarketId(market.id)}
+                      >
+                        <div className="market-header">
+                          <div className="market-asset">
+                            <div className="market-asset-icon">
+                              {market.asset === "BTC" ? "₿" : "Ξ"}
+                            </div>
+                            <span className="market-asset-name">{market.asset}</span>
+                          </div>
+                          <span className="market-interval">{market.interval}</span>
+                        </div>
+
+                        <div className="market-expiry">
+                          <div className="market-expiry-item">
+                            <span className="market-expiry-label">Expires in</span>
+                            <span className={`market-expiry-value ${isUrgent ? "urgent" : isSoon ? "soon" : ""}`}>
+                              {market.expiresInMin}m
+                            </span>
+                          </div>
+                          <div className="market-expiry-item">
+                            <span className="market-expiry-label">At</span>
+                            <span className="market-expiry-value">
+                              {new Date(market.expiry).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <button className="market-trade-btn">Trade</button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>
           )}
 
-          {/* Market count */}
-          {!loading && !error && filteredMarkets.length > 0 && (
-            <p className="mt-6 text-center text-xs text-white/30">
-              {filteredMarkets.length} market{filteredMarkets.length !== 1 ? "s" : ""} available
-            </p>
+          {activeTab === "community" && <CommunityPanel />}
+
+          {activeTab === "baskets" && address && (
+            <div className="baskets-content">
+              <MyBasketsPanel
+                baskets={userBaskets}
+                loading={basketsLoading}
+                onRefresh={fetchUserBaskets}
+              />
+            </div>
           )}
         </main>
-      )}
 
-      {activeTab === "community" && (
-        <div className="h-[calc(100vh-73px)]">
-          <CommunityPanel />
-        </div>
-      )}
-
-      {activeTab === "baskets" && address && (
-        <div className="mx-auto max-w-4xl px-6 py-8">
-          <MyBasketsPanel
-            baskets={userBaskets}
-            loading={basketsLoading}
-            onRefresh={fetchUserBaskets}
+        {/* Modals */}
+        {selectedMarketId && (
+          <MarketDetailModal
+            marketId={selectedMarketId}
+            onClose={() => setSelectedMarketId(null)}
           />
-        </div>
-      )}
+        )}
 
-      {/* Market Detail Modal */}
-      {selectedMarketId && (
-        <MarketDetailModal
-          marketId={selectedMarketId}
-          onClose={() => setSelectedMarketId(null)}
+        <BasketModal
+          isOpen={isBasketModalOpen}
+          onClose={() => setIsBasketModalOpen(false)}
+          availableAssets={availableAssets}
+          marketCount={markets.length}
+          onBasketCreated={fetchUserBaskets}
         />
-      )}
-
-      {/* Basket Creation Modal */}
-      <BasketModal
-        isOpen={isBasketModalOpen}
-        onClose={() => setIsBasketModalOpen(false)}
-        availableAssets={availableAssets}
-        marketCount={markets.length}
-        onBasketCreated={fetchUserBaskets}
-      />
-    </div>
+      </div>
+    </>
   );
 }

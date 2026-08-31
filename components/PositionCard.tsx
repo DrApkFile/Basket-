@@ -31,28 +31,30 @@ export default function PositionCard({
   if (compact) {
     // Compact version for list views
     return (
-      <div className="rounded bg-white/5 px-3 py-2">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <p className="text-xs text-white/90">{plain.question}</p>
-            <p className="mt-0.5 text-[10px] text-white/50">
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm text-white/85">{plain.question}</p>
+            <p className="mt-1 text-xs text-white/40">
               {plain.confidence} · {plain.windowLabel}
             </p>
           </div>
           {showOutcome && position.outcome && (
             <span
-              className={`ml-2 rounded px-1.5 py-0.5 text-[10px] ${
+              className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${
                 position.outcome === "won"
-                  ? "bg-green-500/20 text-green-400"
+                  ? "bg-green-500/15 text-green-400"
                   : position.outcome === "lost"
-                  ? "bg-red-500/20 text-red-400"
+                  ? "bg-red-500/15 text-red-400"
                   : position.outcome === "voided"
-                  ? "bg-gray-500/20 text-gray-400"
-                  : "bg-yellow-500/20 text-yellow-400"
+                  ? "bg-white/10 text-white/50"
+                  : "bg-yellow-500/15 text-yellow-400"
               }`}
             >
               {position.outcome.toUpperCase()}
-              {position.payout != null && position.payout > 0 && ` +$${position.payout.toFixed(2)}`}
+              {position.payout != null && position.payout > 0 && (
+                <span className="ml-1 text-green-400">+${position.payout.toFixed(2)}</span>
+              )}
             </span>
           )}
         </div>
@@ -62,32 +64,32 @@ export default function PositionCard({
 
   // Full version for proposal view
   return (
-    <div className="rounded-lg bg-white/5 px-4 py-3">
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
       {/* Plain language question - primary */}
-      <p className="text-sm font-medium text-white/90">{plain.question}</p>
+      <p className="text-sm font-medium text-white/85">{plain.question}</p>
 
       {/* Secondary details */}
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/50">
-        <span className="text-accent">{plain.confidence}</span>
-        <span>{plain.windowLabel}</span>
-        <span>{plain.contractsLabel}</span>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        <span className="text-orange-400">{plain.confidence}</span>
+        <span className="text-white/40">{plain.windowLabel}</span>
+        <span className="text-white/40">{plain.contractsLabel}</span>
         {showCost && position.cost != null && (
-          <span className="text-white/70">= ${position.cost.toFixed(2)}</span>
+          <span className="font-medium text-white/60">= ${position.cost.toFixed(2)}</span>
         )}
       </div>
 
       {/* Outcome badge if showing */}
       {showOutcome && position.outcome && (
-        <div className="mt-2">
+        <div className="mt-3">
           <span
-            className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold ${
+            className={`inline-block rounded-lg px-3 py-1 text-xs font-semibold ${
               position.outcome === "won"
-                ? "bg-green-500/20 text-green-400"
+                ? "bg-green-500/15 text-green-400"
                 : position.outcome === "lost"
-                ? "bg-red-500/20 text-red-400"
+                ? "bg-red-500/15 text-red-400"
                 : position.outcome === "voided"
-                ? "bg-gray-500/20 text-gray-400"
-                : "bg-yellow-500/20 text-yellow-400"
+                ? "bg-white/10 text-white/50"
+                : "bg-yellow-500/15 text-yellow-400"
             }`}
           >
             {position.outcome.toUpperCase()}
@@ -99,7 +101,7 @@ export default function PositionCard({
       {/* Liquidity note */}
       {showLiquidity && position.liquidityNote && (
         <div
-          className={`mt-2 rounded px-2 py-1 text-[10px] ${
+          className={`mt-3 rounded-lg px-3 py-2 text-xs ${
             position.liquidityLabel === "deep"
               ? "bg-green-500/10 text-green-400"
               : position.liquidityLabel === "thin"
@@ -114,15 +116,16 @@ export default function PositionCard({
       {/* Technical details toggle */}
       <button
         onClick={() => setShowTechnical(!showTechnical)}
-        className="mt-2 text-[10px] text-white/30 hover:text-white/50"
+        className="mt-3 flex items-center gap-1 text-xs text-white/30 transition-colors hover:text-white/50"
       >
-        {showTechnical ? "▾ Hide technical" : "▸ Show technical"}
+        <span>{showTechnical ? "▾" : "▸"}</span>
+        <span>{showTechnical ? "Hide" : "Show"} technical</span>
       </button>
 
       {showTechnical && (
-        <div className="mt-1 rounded bg-black/30 px-2 py-1.5 font-mono text-[10px] text-white/40">
+        <div className="mt-2 rounded-lg border border-white/5 bg-black/30 px-3 py-2 font-mono text-[11px] text-white/40">
           <div>{position.symbol}#{position.side}</div>
-          <div>
+          <div className="mt-1">
             {position.quantity} @ {position.price.toFixed(4)} | Interval: {position.interval || "—"}
           </div>
         </div>

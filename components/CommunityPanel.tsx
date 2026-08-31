@@ -21,9 +21,7 @@ export default function CommunityPanel() {
     async function fetchCommunityBaskets() {
       try {
         const res = await fetch("/api/basket/community");
-        if (!res.ok) {
-          throw new Error("Failed to load community baskets");
-        }
+        if (!res.ok) throw new Error("Failed to load community baskets");
         const data = await res.json();
         setBaskets(data.baskets || []);
       } catch (err) {
@@ -32,90 +30,105 @@ export default function CommunityPanel() {
         setLoading(false);
       }
     }
-
     fetchCommunityBaskets();
   }, []);
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-white/40">Loading community baskets...</p>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-orange-500" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-red-400">{error}</p>
+      <div className="mx-auto max-w-md rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
+        <p className="text-red-400">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto p-6">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="font-display text-xl font-bold text-white">Community Baskets</h1>
-        <p className="mt-1 text-sm text-white/50">
-          Explore baskets created by other traders. Copy any basket to use as a starting point for
-          your own.
+    <div className="mx-auto max-w-5xl">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold">Community Baskets</h1>
+        <p className="mt-2 text-white/50">
+          Explore shared baskets from other traders. Copy any basket to start building your own.
         </p>
+      </div>
 
-        {baskets.length === 0 ? (
-          <div className="mt-12 text-center">
-            <p className="text-white/40">No community baskets yet</p>
-            <p className="mt-1 text-xs text-white/30">
-              Create a basket and share it to be the first!
-            </p>
+      {baskets.length === 0 ? (
+        <div className="rounded-2xl border border-white/6 bg-white/[0.02] p-16 text-center">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/10 to-green-500/5">
+            <span className="text-4xl">🌐</span>
           </div>
-        ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {baskets.map((basket) => (
-              <Link
-                key={basket.id}
-                href={`/basket/${basket.id}`}
-                className="group rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:border-accent/30 hover:bg-white/10"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-accent">{basket.asset}</span>
+          <h3 className="text-lg font-semibold">No Shared Baskets Yet</h3>
+          <p className="mt-2 text-sm text-white/40">
+            Create a basket and share it with the community to be the first!
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {baskets.map((basket) => (
+            <Link
+              key={basket.id}
+              href={`/basket/${basket.id}`}
+              className="group relative rounded-2xl border border-white/6 bg-gradient-to-br from-white/[0.03] to-white/[0.01] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/20 hover:shadow-lg hover:shadow-orange-500/5"
+            >
+              {/* Hover glow */}
+              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+
+              <div className="relative">
+                {/* Header */}
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-green-500/10 text-lg font-bold">
+                      {basket.asset === "BTC" ? "₿" : basket.asset === "ETH" ? "Ξ" : "⚡"}
+                    </div>
+                    <span className="font-semibold">{basket.asset}</span>
+                  </div>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      basket.status === "redeemed"
-                        ? "bg-green-500/20 text-green-400"
-                        : basket.status === "settled"
-                        ? "bg-blue-500/20 text-blue-400"
-                        : "bg-yellow-500/20 text-yellow-400"
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold ${
+                      basket.status === "active"
+                        ? "bg-yellow-500/10 text-yellow-400"
+                        : "bg-white/5 text-white/40"
                     }`}
                   >
                     {basket.status}
                   </span>
                 </div>
 
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                {/* Stats */}
+                <div className="mb-4 grid grid-cols-2 gap-4">
                   <div>
-                    <span className="text-white/40">Spent</span>
-                    <p className="font-mono text-white">${basket.totalSpent.toFixed(2)}</p>
+                    <div className="text-xs text-white/40">Spent</div>
+                    <div className="font-mono text-lg font-semibold text-orange-400">
+                      ${basket.totalSpent.toFixed(2)}
+                    </div>
                   </div>
                   <div>
-                    <span className="text-white/40">Windows</span>
-                    <p className="font-mono text-white">{basket.legCount}</p>
+                    <div className="text-xs text-white/40">Windows</div>
+                    <div className="font-mono text-lg font-semibold">{basket.legCount}</div>
                   </div>
                 </div>
 
-                <p className="mt-3 text-[10px] text-white/30">
-                  {basket.createdAt
-                    ? new Date(basket.createdAt).toLocaleDateString()
-                    : "Recently created"}
-                </p>
-
-                <div className="mt-3 flex items-center justify-end text-xs text-accent opacity-0 transition-opacity group-hover:opacity-100">
-                  View & Copy →
+                {/* Footer */}
+                <div className="flex items-center justify-between border-t border-white/5 pt-4">
+                  <span className="text-xs text-white/30">
+                    {basket.createdAt
+                      ? new Date(basket.createdAt).toLocaleDateString()
+                      : "Recently"}
+                  </span>
+                  <span className="text-xs font-medium text-orange-400 opacity-0 transition-opacity group-hover:opacity-100">
+                    View & Copy →
+                  </span>
                 </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
