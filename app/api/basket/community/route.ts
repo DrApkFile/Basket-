@@ -12,19 +12,30 @@ import type { BasketDoc } from "@/lib/firestore-types";
 
 export async function GET() {
   try {
-    // Get only explicitly shared baskets that are still active (not settled/redeemed)
+    // Simple query - just get shared baskets, filter in memory to avoid composite index requirement
     const q = query(
       collection(db, "baskets"),
       where("shared", "==", true),
-      where("status", "in", ["pending", "active"]),
-      orderBy("sharedAt", "desc"),
-      limit(50)
+      limit(100)
     );
 
     const snap = await getDocs(q);
 
+    // Filter to active/pending and sort in memory
+    const filteredDocs = snap.docs
+      .filter((doc) => {
+        const data = doc.data() as BasketDoc;
+        return data.status === "pending" || data.status === "active";
+      })
+      .sort((a, b) => {
+        const aTime = (a.data() as BasketDoc).sharedAt?.toMillis?.() ?? 0;
+        const bTime = (b.data() as BasketDoc).sharedAt?.toMillis?.() ?? 0;
+        return bTime - aTime; // Descending
+      })
+      .slice(0, 50);
+
     const baskets = await Promise.all(
-      snap.docs.map(async (doc) => {
+      filteredDocs.map(async (doc) => {
         const data = doc.data() as BasketDoc;
 
         // Count legs
@@ -46,8 +57,16 @@ export async function GET() {
     return NextResponse.json({ baskets });
   } catch (err) {
     console.error("Community baskets error:", err);
+
+    // Check if it's an index error - return empty array instead of failing
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    if (errorMsg.includes("index") || errorMsg.includes("Index")) {
+      console.warn("Firestore index not ready, returning empty baskets");
+      return NextResponse.json({ baskets: [] });
+    }
+
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
+      { error: errorMsg },
       { status: 500 }
     );
   }
