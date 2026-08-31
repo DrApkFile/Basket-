@@ -6,16 +6,18 @@
  */
 
 import { NextResponse } from "next/server";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { BasketDoc } from "@/lib/firestore-types";
 
 export async function GET() {
   try {
-    // Get recent baskets (limit to 50)
+    // Get only explicitly shared baskets that are still active (not settled/redeemed)
     const q = query(
       collection(db, "baskets"),
-      orderBy("createdAt", "desc"),
+      where("shared", "==", true),
+      where("status", "in", ["pending", "active"]),
+      orderBy("sharedAt", "desc"),
       limit(50)
     );
 
@@ -36,6 +38,7 @@ export async function GET() {
           legCount,
           status: data.status,
           createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
+          sharedAt: data.sharedAt?.toDate?.()?.toISOString() ?? null,
         };
       })
     );

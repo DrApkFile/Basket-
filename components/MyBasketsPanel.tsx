@@ -26,17 +26,15 @@ export default function MyBasketsPanel({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
-    <aside className="h-full overflow-y-auto border-l border-white/10 bg-black/20 p-4">
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-xs font-bold tracking-wide text-white/60">
-          MY BASKETS
-        </h2>
+        <h2 className="text-lg font-bold text-white">My Baskets</h2>
         <button
           onClick={onRefresh}
           disabled={loading}
-          className="text-[10px] text-accent hover:underline disabled:opacity-50"
+          className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 disabled:opacity-50"
         >
-          {loading ? "..." : "↻"}
+          {loading ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
@@ -111,6 +109,6 @@ export default function MyBasketsPanel({
           </li>
         ))}
       </ul>
-    </aside>
+    </div>
   );
 }

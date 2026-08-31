@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useWalletClient } from "wagmi";
+import { useWalletClient, useAccount } from "wagmi";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createExchange } from "@/lib/somnia";
@@ -53,11 +53,13 @@ interface RedeemableLeg {
 
 export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
   const { data: walletClient } = useWalletClient();
+  const { address } = useAccount();
   const [basket, setBasket] = useState<(BasketDoc & { id: string }) | null>(null);
   const [narration, setNarration] = useState<NarrationResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [redeeming, setRedeeming] = useState(false);
   const [redeemProgress, setRedeemProgress] = useState("");
+  const [sharing, setSharing] = useState(false);
 
   // Real-time subscription to basket document
   useEffect(() => {
@@ -211,6 +213,33 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
 
   const canRedeem = narration?.legs?.some((l) => l.redeemable) ?? false;
   const allSettled = narration?.summary?.pending === 0;
+  const isOwner = address && basket?.userId === address;
+  const canShare = isOwner && basket?.status !== "settled" && basket?.status !== "redeemed";
+
+  async function handleToggleShare() {
+    if (!basket || !isOwner) return;
+    setSharing(true);
+    try {
+      const res = await fetch("/api/basket/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          basketId,
+          userId: address,
+          share: !basket.shared,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update sharing");
+      }
+    } catch (err) {
+      console.error("Share toggle error:", err);
+      alert(err instanceof Error ? err.message : "Failed to update sharing");
+    } finally {
+      setSharing(false);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-white/10 p-5">
@@ -223,16 +252,32 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
           <p className="mt-1 font-mono text-xs text-white/40">{basketId.slice(0, 8)}...</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Share to Community toggle */}
+          {canShare && (
+            <button
+              onClick={handleToggleShare}
+              disabled={sharing}
+              className={`rounded px-2 py-1 text-[10px] transition-colors ${
+                basket?.shared
+                  ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                  : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
+              }`}
+              title={basket?.shared ? "Remove from Community" : "Share to Community"}
+            >
+              {sharing ? "..." : basket?.shared ? "Shared ✓" : "Share"}
+            </button>
+          )}
+          {/* Copy link */}
           <button
             onClick={() => {
               const url = `${window.location.origin}/basket/${basketId}`;
               navigator.clipboard.writeText(url);
-              alert("Share link copied!");
+              alert("Link copied!");
             }}
             className="rounded bg-white/5 px-2 py-1 text-[10px] text-white/50 hover:bg-white/10 hover:text-white/70"
-            title="Copy share link"
+            title="Copy link"
           >
-            Share
+            🔗
           </button>
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${

@@ -47,6 +47,8 @@ export interface BasketDoc {
   aiReasoning: string;
   narration?: string; // Plain-language status update from AI
   updatedAt?: Timestamp;
+  shared?: boolean; // If true, visible in community tab
+  sharedAt?: Timestamp;
 }
 
 export interface LegDoc {
