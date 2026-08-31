@@ -204,41 +204,51 @@ export default function Hero() {
           align-items: center;
           padding: calc(var(--header-height) + 60px) var(--gutter) 80px;
           overflow: hidden;
+          isolation: isolate;
         }
 
         .hero-bg {
           position: absolute;
           inset: 0;
-          z-index: -2;
+          z-index: -1;
+          overflow: hidden;
+          background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
         }
 
         .hero-video {
           position: absolute;
-          inset: 0;
+          top: 0;
+          left: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          opacity: 0.6;
+          object-position: center;
+          pointer-events: none;
+          user-select: none;
         }
 
         .hero-glow {
           position: absolute;
           inset: 0;
+          z-index: 1;
           pointer-events: none;
-          transition: opacity 3s ease-out;
+          transition: opacity 3s ease-in-out;
+          mix-blend-mode: screen;
         }
 
         .hero-overlay {
           position: absolute;
           inset: 0;
+          z-index: 2;
           background:
-            linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.8) 100%),
-            radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.4) 100%);
+            linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.9) 100%),
+            radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.5) 100%);
+          pointer-events: none;
         }
 
         .hero-content {
           position: relative;
-          z-index: 1;
+          z-index: 10;
           max-width: 900px;
         }
 
@@ -631,13 +641,14 @@ export default function Hero() {
         {/* Hero Section */}
         <section className="hero" ref={heroRef}>
           <div className="hero-bg">
+            {/* Background Video */}
             <video
               className="hero-video"
               autoPlay
               muted
               loop
               playsInline
-              disablePictureInPicture
+              preload="auto"
               aria-hidden="true"
             >
               <source
@@ -645,11 +656,28 @@ export default function Hero() {
                 type="video/mp4"
               />
             </video>
+            {/* Mouse-following glow effect */}
             <div
               className="hero-glow"
               style={{
                 opacity: glowOpacity,
-                background: `radial-gradient(600px circle at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(0, 226, 138, 0.15), transparent 40%)`,
+                background: `
+                  radial-gradient(900px circle at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(0, 226, 138, 0.3), transparent 50%),
+                  radial-gradient(600px circle at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(0, 255, 150, 0.15), transparent 40%)
+                `,
+              }}
+            />
+            {/* Ambient glow that follows mouse with delay */}
+            <div
+              className="hero-glow-ambient"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 1,
+                pointerEvents: 'none',
+                opacity: glowOpacity * 0.6,
+                background: `radial-gradient(1200px circle at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(0, 200, 120, 0.08), transparent 60%)`,
+                transition: 'opacity 3s ease-in-out, background 0.5s ease-out',
               }}
             />
             <div className="hero-overlay" />
