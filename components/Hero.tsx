@@ -57,65 +57,44 @@ export default function Hero() {
         :root {
           --gutter: clamp(24px, 5vw, 96px);
           --header-height: 72px;
-          --accent-green: #00E28A;
-          --accent-orange: #FF6B35;
-          --accent-gradient: linear-gradient(135deg, var(--accent-orange), var(--accent-green));
+          --accent-green: #00FF94;
+          --accent-orange: #FF5722;
+          --bg-dark: #0a0a0c;
         }
 
         .landing-page {
-          background: #000;
+          background: var(--bg-dark);
           color: #fff;
           font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
           min-height: 100vh;
         }
 
-        /* Glass Button */
-        .glass-btn {
+        /* Animated Border Button */
+        .btn-animated {
           position: relative;
-          padding: 12px 24px;
+          padding: 2px;
+          background: var(--accent-orange);
+          text-decoration: none;
+          transition: background 0.4s ease;
+        }
+
+        .btn-animated:hover {
+          background: var(--accent-green);
+        }
+
+        .btn-animated-inner {
+          display: block;
+          padding: 12px 28px;
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 700;
           color: #fff;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(0, 226, 138, 0.1));
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 12px;
-          cursor: pointer;
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
-          box-shadow:
-            0 4px 24px rgba(0, 0, 0, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1),
-            inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-          transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
-          overflow: hidden;
+          background: var(--bg-dark);
+          transition: all 0.3s ease;
         }
 
-        .glass-btn::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(0, 226, 138, 0.15));
-          opacity: 0;
-          transition: opacity 300ms;
-          border-radius: inherit;
-        }
-
-        .glass-btn:hover {
-          transform: translateY(-2px);
-          border-color: rgba(255, 255, 255, 0.2);
-          box-shadow:
-            0 8px 32px rgba(255, 107, 53, 0.2),
-            0 4px 16px rgba(0, 226, 138, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.15);
-        }
-
-        .glass-btn:hover::before {
-          opacity: 1;
-        }
-
-        .glass-btn span {
-          position: relative;
-          z-index: 1;
+        .btn-animated:hover .btn-animated-inner {
+          background: transparent;
+          color: #000;
         }
 
         /* Header */
@@ -130,10 +109,8 @@ export default function Hero() {
           justify-content: space-between;
           padding: 0 var(--gutter);
           z-index: 100;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          background: var(--bg-dark);
+          border-bottom: 2px solid var(--accent-orange);
         }
 
         .brand {
@@ -149,44 +126,41 @@ export default function Hero() {
         }
 
         .brand-name {
-          font-size: 22px;
-          font-weight: 700;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          font-size: 24px;
+          font-weight: 800;
+          color: #fff;
           letter-spacing: -0.5px;
         }
 
         .nav {
           display: flex;
           align-items: center;
-          gap: clamp(24px, 3vw, 40px);
+          gap: 0;
+          border: 2px solid var(--accent-orange);
         }
 
         .nav-link {
-          font-size: 15px;
-          font-weight: 450;
-          color: rgba(255, 255, 255, 0.6);
+          padding: 10px 24px;
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.5);
           text-decoration: none;
-          transition: color 200ms;
-          position: relative;
+          border-right: 2px solid var(--accent-orange);
+          transition: all 200ms;
         }
 
-        .nav-link:hover,
-        .nav-link.active {
+        .nav-link:last-child {
+          border-right: none;
+        }
+
+        .nav-link:hover {
           color: #fff;
+          background: rgba(255, 87, 34, 0.15);
         }
 
-        .nav-link.active::after {
-          content: '';
-          position: absolute;
-          bottom: -4px;
-          left: 0;
-          right: 0;
-          height: 2px;
-          background: var(--accent-gradient);
-          border-radius: 1px;
+        .nav-link.active {
+          color: #000;
+          background: var(--accent-orange);
         }
 
         .menu-toggle {
@@ -195,11 +169,13 @@ export default function Hero() {
           height: 44px;
           align-items: center;
           justify-content: center;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
+          background: transparent;
+          border: 2px solid var(--accent-orange);
           cursor: pointer;
-          backdrop-filter: blur(10px);
+        }
+
+        .menu-toggle:hover {
+          background: var(--accent-orange);
         }
 
         /* Hero Section */
@@ -264,38 +240,37 @@ export default function Hero() {
         .hero-badge {
           display: inline-flex;
           align-items: center;
-          gap: 10px;
-          padding: 10px 18px;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.12), rgba(0, 226, 138, 0.08));
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 100px;
+          gap: 12px;
+          padding: 10px 20px;
+          background: transparent;
+          border: 2px solid var(--accent-green);
           font-size: 13px;
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.9);
-          margin-bottom: 36px;
-          backdrop-filter: blur(10px);
+          font-weight: 700;
+          color: var(--accent-green);
+          margin-bottom: 40px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
 
         .hero-badge-dot {
           width: 8px;
           height: 8px;
           background: var(--accent-green);
-          border-radius: 50%;
-          animation: pulse 2s infinite;
-          box-shadow: 0 0 12px var(--accent-green);
+          animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(0.9); }
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
         }
 
         .hero-title {
-          font-size: clamp(52px, 9vw, 96px);
-          font-weight: 700;
-          line-height: 1.0;
-          letter-spacing: -3px;
-          margin: 0 0 32px;
+          font-size: clamp(56px, 10vw, 110px);
+          font-weight: 800;
+          line-height: 0.95;
+          letter-spacing: -4px;
+          margin: 0 0 36px;
+          text-transform: uppercase;
         }
 
         .hero-title .line {
@@ -303,28 +278,25 @@ export default function Hero() {
         }
 
         .hero-title .gradient {
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          color: var(--accent-orange);
         }
 
         .hero-title .dim {
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.25);
         }
 
         .hero-description {
-          font-size: clamp(18px, 2.2vw, 24px);
+          font-size: clamp(16px, 2vw, 20px);
           font-weight: 400;
-          line-height: 1.6;
-          color: rgba(255, 255, 255, 0.6);
-          max-width: 560px;
+          line-height: 1.7;
+          color: rgba(255, 255, 255, 0.5);
+          max-width: 520px;
           margin-bottom: 48px;
         }
 
         .hero-actions {
           display: flex;
-          gap: 16px;
+          gap: 20px;
           flex-wrap: wrap;
         }
 
@@ -332,67 +304,69 @@ export default function Hero() {
           display: inline-flex;
           align-items: center;
           gap: 12px;
-          padding: 18px 32px;
-          font-size: 16px;
-          font-weight: 600;
           text-decoration: none;
+          font-size: 15px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
         .hero-cta-primary {
-          background: linear-gradient(135deg, var(--accent-orange), #FF8B5A);
+          padding: 18px 36px;
+          background: var(--accent-orange);
           color: #000;
           border: none;
-          border-radius: 14px;
-          box-shadow: 0 4px 24px rgba(255, 107, 53, 0.4);
-          transition: all 300ms;
+          transition: all 200ms;
         }
 
         .hero-cta-primary:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 40px rgba(255, 107, 53, 0.5);
+          background: var(--accent-green);
         }
 
         .hero-cta-secondary {
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          padding: 16px 34px;
+          background: transparent;
+          border: 2px solid rgba(255, 255, 255, 0.2);
           color: #fff;
-          border-radius: 14px;
-          backdrop-filter: blur(10px);
-          transition: all 300ms;
+          transition: all 200ms;
         }
 
         .hero-cta-secondary:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.2);
+          border-color: var(--accent-orange);
+          color: var(--accent-orange);
         }
 
         /* Stats Bar */
         .stats-bar {
           display: flex;
-          gap: 48px;
+          gap: 0;
           margin-top: 80px;
-          padding-top: 40px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          border: 2px solid var(--accent-orange);
         }
 
         .stat {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
+          flex: 1;
+          padding: 24px 32px;
+          border-right: 2px solid var(--accent-orange);
+        }
+
+        .stat:last-child {
+          border-right: none;
         }
 
         .stat-value {
-          font-size: 32px;
-          font-weight: 700;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          font-size: 36px;
+          font-weight: 800;
+          color: var(--accent-orange);
         }
 
         .stat-label {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.5);
+          font-size: 12px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.4);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-top: 4px;
         }
 
         /* Features Section */
@@ -402,7 +376,8 @@ export default function Hero() {
         }
 
         .section-dark {
-          background: linear-gradient(180deg, #000 0%, #050508 50%, #000 100%);
+          background: var(--bg-dark);
+          border-top: 2px solid var(--accent-orange);
         }
 
         .section-header {
@@ -413,28 +388,28 @@ export default function Hero() {
 
         .section-label {
           display: inline-block;
-          font-size: 12px;
+          padding: 8px 16px;
+          font-size: 11px;
           font-weight: 700;
           letter-spacing: 2px;
           text-transform: uppercase;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin-bottom: 24px;
+          color: var(--accent-orange);
+          border: 2px solid var(--accent-orange);
+          margin-bottom: 28px;
         }
 
         .section-title {
           font-size: clamp(36px, 5vw, 56px);
-          font-weight: 700;
-          line-height: 1.1;
-          letter-spacing: -1.5px;
+          font-weight: 800;
+          line-height: 1.05;
+          letter-spacing: -2px;
           margin: 0 0 24px;
+          text-transform: uppercase;
         }
 
         .section-description {
-          font-size: 18px;
-          color: rgba(255, 255, 255, 0.5);
+          font-size: 16px;
+          color: rgba(255, 255, 255, 0.45);
           line-height: 1.7;
         }
 
@@ -450,35 +425,32 @@ export default function Hero() {
 
         .bento-card {
           position: relative;
-          padding: 40px;
-          background: linear-gradient(145deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 24px;
-          overflow: hidden;
-          transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+          background: transparent;
         }
 
-        .bento-card::before {
-          content: '';
+        .bento-card-border {
           position: absolute;
           inset: 0;
-          background: radial-gradient(ellipse at 50% 0%, rgba(255, 107, 53, 0.08), transparent 70%);
-          opacity: 0;
-          transition: opacity 400ms;
+          background: var(--accent-orange);
+          transition: background 0.4s ease;
         }
 
-        .bento-card:hover {
-          border-color: rgba(255, 107, 53, 0.2);
-          transform: translateY(-4px);
+        .bento-card:hover .bento-card-border {
+          background: var(--accent-green);
         }
 
-        .bento-card:hover::before {
-          opacity: 1;
+        .bento-card-inner {
+          position: relative;
+          z-index: 1;
+          margin: 2px;
+          padding: 36px;
+          background: var(--bg-dark);
+          height: calc(100% - 4px);
+          box-sizing: border-box;
         }
 
         .bento-card.featured {
           grid-column: span 2;
-          background: linear-gradient(145deg, rgba(255, 107, 53, 0.06), rgba(0, 226, 138, 0.03));
         }
 
         .bento-card.tall {
@@ -486,135 +458,116 @@ export default function Hero() {
         }
 
         .bento-icon {
-          width: 56px;
-          height: 56px;
+          width: 52px;
+          height: 52px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(0, 226, 138, 0.1));
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-          margin-bottom: 28px;
+          border: 2px solid var(--accent-orange);
+          margin-bottom: 24px;
           color: var(--accent-orange);
         }
 
         .bento-number {
-          font-size: 48px;
+          font-size: 52px;
           font-weight: 800;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin-bottom: 20px;
+          color: var(--accent-orange);
+          margin-bottom: 16px;
         }
 
         .bento-title {
-          font-size: 22px;
-          font-weight: 600;
-          margin: 0 0 14px;
-          letter-spacing: -0.3px;
+          font-size: 20px;
+          font-weight: 700;
+          margin: 0 0 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
         .bento-description {
-          font-size: 15px;
-          color: rgba(255, 255, 255, 0.5);
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.45);
           line-height: 1.7;
           margin: 0;
         }
 
         .bento-visual {
-          margin-top: 32px;
-          padding: 24px;
-          background: rgba(0, 0, 0, 0.4);
-          border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          margin-top: 28px;
+          padding: 20px;
+          background: rgba(0, 0, 0, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .bento-chart {
           display: flex;
           align-items: flex-end;
-          gap: 8px;
-          height: 80px;
+          gap: 6px;
+          height: 70px;
         }
 
         .bento-bar {
           flex: 1;
-          background: linear-gradient(180deg, var(--accent-orange), var(--accent-green));
-          border-radius: 4px;
-          opacity: 0.7;
+          background: var(--accent-orange);
         }
 
         /* How It Works */
         .process-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 40px;
-          max-width: 1100px;
+          gap: 0;
+          max-width: 1000px;
           margin: 0 auto;
-          position: relative;
-        }
-
-        .process-grid::before {
-          content: '';
-          position: absolute;
-          top: 48px;
-          left: 15%;
-          right: 15%;
-          height: 2px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          border: 2px solid var(--accent-orange);
         }
 
         .process-step {
           text-align: center;
-          position: relative;
+          padding: 48px 32px;
+          border-right: 2px solid var(--accent-orange);
+          transition: background 0.3s ease;
+        }
+
+        .process-step:last-child {
+          border-right: none;
+        }
+
+        .process-step:hover {
+          background: rgba(255, 87, 34, 0.05);
         }
 
         .process-number {
-          width: 96px;
-          height: 96px;
+          width: 80px;
+          height: 80px;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 32px;
-          font-size: 36px;
+          margin: 0 auto 28px;
+          font-size: 32px;
           font-weight: 800;
-          background: linear-gradient(145deg, rgba(255, 107, 53, 0.1), rgba(0, 226, 138, 0.05));
-          border: 2px solid rgba(255, 107, 53, 0.2);
-          border-radius: 24px;
+          border: 2px solid var(--accent-orange);
           color: var(--accent-orange);
-          position: relative;
-          z-index: 1;
         }
 
         .process-title {
-          font-size: 22px;
-          font-weight: 600;
-          margin: 0 0 14px;
+          font-size: 18px;
+          font-weight: 700;
+          margin: 0 0 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
         .process-description {
-          font-size: 15px;
-          color: rgba(255, 255, 255, 0.5);
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.4);
           line-height: 1.7;
           margin: 0;
-          max-width: 280px;
-          margin-inline: auto;
         }
 
         /* CTA Section */
         .cta-section {
-          padding: 120px var(--gutter);
+          padding: 140px var(--gutter);
           text-align: center;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .cta-section::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(ellipse at 50% 100%, rgba(255, 107, 53, 0.15) 0%, transparent 60%),
-                      radial-gradient(ellipse at 50% 0%, rgba(0, 226, 138, 0.08) 0%, transparent 50%);
+          background: var(--bg-dark);
+          border-top: 2px solid var(--accent-orange);
         }
 
         .cta-content {
@@ -623,23 +576,24 @@ export default function Hero() {
         }
 
         .cta-title {
-          font-size: clamp(32px, 5vw, 52px);
-          font-weight: 700;
-          letter-spacing: -1px;
+          font-size: clamp(36px, 6vw, 64px);
+          font-weight: 800;
+          letter-spacing: -2px;
           margin: 0 0 20px;
+          text-transform: uppercase;
         }
 
         .cta-description {
-          font-size: 18px;
-          color: rgba(255, 255, 255, 0.5);
-          margin-bottom: 40px;
+          font-size: 16px;
+          color: rgba(255, 255, 255, 0.4);
+          margin-bottom: 48px;
         }
 
         /* Footer */
         .footer {
-          padding: 60px var(--gutter) 40px;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-          background: #000;
+          padding: 48px var(--gutter);
+          border-top: 2px solid var(--accent-orange);
+          background: var(--bg-dark);
         }
 
         .footer-content {
@@ -660,32 +614,38 @@ export default function Hero() {
 
         .footer-brand-name {
           font-size: 20px;
-          font-weight: 700;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          font-weight: 800;
+          color: #fff;
         }
 
         .footer-links {
           display: flex;
-          gap: 36px;
+          gap: 0;
+          border: 2px solid rgba(255, 255, 255, 0.15);
         }
 
         .footer-link {
-          font-size: 14px;
+          padding: 10px 20px;
+          font-size: 13px;
+          font-weight: 600;
           color: rgba(255, 255, 255, 0.4);
           text-decoration: none;
-          transition: color 200ms;
+          border-right: 2px solid rgba(255, 255, 255, 0.15);
+          transition: all 200ms;
+        }
+
+        .footer-link:last-child {
+          border-right: none;
         }
 
         .footer-link:hover {
           color: var(--accent-orange);
+          background: rgba(255, 87, 34, 0.1);
         }
 
         .footer-copy {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.3);
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.25);
         }
 
         /* Animations */
@@ -712,12 +672,42 @@ export default function Hero() {
         @media (max-width: 768px) {
           .nav { display: none; }
           .menu-toggle { display: flex; }
-          .bento-grid, .process-grid { grid-template-columns: 1fr; }
+
+          .bento-grid {
+            grid-template-columns: 1fr;
+          }
           .bento-card.featured { grid-column: span 1; }
-          .process-grid::before { display: none; }
-          .stats-bar { flex-direction: column; gap: 24px; }
-          .footer-content { flex-direction: column; text-align: center; }
-          .footer-links { flex-wrap: wrap; justify-content: center; }
+
+          .process-grid {
+            grid-template-columns: 1fr;
+          }
+          .process-step {
+            border-right: none;
+            border-bottom: 2px solid var(--accent-orange);
+          }
+          .process-step:last-child {
+            border-bottom: none;
+          }
+
+          .stats-bar {
+            flex-direction: column;
+          }
+          .stat {
+            border-right: none;
+            border-bottom: 2px solid var(--accent-orange);
+          }
+          .stat:last-child {
+            border-bottom: none;
+          }
+
+          .footer-content {
+            flex-direction: column;
+            text-align: center;
+          }
+          .footer-links {
+            flex-wrap: wrap;
+            justify-content: center;
+          }
         }
       `}</style>
 
@@ -748,8 +738,8 @@ export default function Hero() {
             <Link href="/docs" className="nav-link">Docs</Link>
           </nav>
 
-          <Link href="/basket" className="glass-btn">
-            <span>Launch App</span>
+          <Link href="/basket" className="btn-animated">
+            <span className="btn-animated-inner">Launch App →</span>
           </Link>
 
           <button
@@ -850,73 +840,87 @@ export default function Hero() {
 
           <div className="bento-grid">
             <div className="bento-card featured">
-              <div className="bento-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <h3 className="bento-title">AI-Constructed Portfolios</h3>
-              <p className="bento-description">
-                Our AI analyzes market liquidity, volatility, and correlation to build optimal position distributions.
-                Every decision is explained — no black box.
-              </p>
-              <div className="bento-visual">
-                <div className="bento-chart">
-                  <div className="bento-bar" style={{ height: '40%' }} />
-                  <div className="bento-bar" style={{ height: '70%' }} />
-                  <div className="bento-bar" style={{ height: '55%' }} />
-                  <div className="bento-bar" style={{ height: '85%' }} />
-                  <div className="bento-bar" style={{ height: '60%' }} />
-                  <div className="bento-bar" style={{ height: '75%' }} />
+              <div className="bento-card-border" />
+              <div className="bento-card-inner">
+                <div className="bento-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5M2 12l10 5 10-5" />
+                  </svg>
+                </div>
+                <h3 className="bento-title">AI-Constructed</h3>
+                <p className="bento-description">
+                  Our AI analyzes market liquidity, volatility, and correlation to build optimal positions.
+                  Every decision is explained — no black box.
+                </p>
+                <div className="bento-visual">
+                  <div className="bento-chart">
+                    <div className="bento-bar" style={{ height: '40%' }} />
+                    <div className="bento-bar" style={{ height: '70%' }} />
+                    <div className="bento-bar" style={{ height: '55%' }} />
+                    <div className="bento-bar" style={{ height: '85%' }} />
+                    <div className="bento-bar" style={{ height: '60%' }} />
+                    <div className="bento-bar" style={{ height: '75%' }} />
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="bento-card tall">
-              <div className="bento-number">↓38%</div>
-              <h3 className="bento-title">Variance Reduction</h3>
-              <p className="bento-description">
-                Spreading across multiple time windows reduces variance by up to 38% compared to all-in single bets.
-                Same thesis, smoother outcomes.
-              </p>
+              <div className="bento-card-border" />
+              <div className="bento-card-inner">
+                <div className="bento-number">↓38%</div>
+                <h3 className="bento-title">Variance</h3>
+                <p className="bento-description">
+                  Spreading across multiple time windows reduces variance by up to 38% vs all-in bets.
+                </p>
+              </div>
             </div>
 
             <div className="bento-card">
-              <div className="bento-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
+              <div className="bento-card-border" />
+              <div className="bento-card-inner">
+                <div className="bento-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </div>
+                <h3 className="bento-title">On-Chain</h3>
+                <p className="bento-description">
+                  Positions resolve permissionlessly on DreamDEX. Your keys, verifiable outcomes.
+                </p>
               </div>
-              <h3 className="bento-title">Fully On-Chain</h3>
-              <p className="bento-description">
-                Every position resolves permissionlessly on DreamDEX. Your keys, verifiable outcomes.
-              </p>
             </div>
 
             <div className="bento-card">
-              <div className="bento-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
+              <div className="bento-card-border" />
+              <div className="bento-card-inner">
+                <div className="bento-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <h3 className="bento-title">Time Windows</h3>
+                <p className="bento-description">
+                  From 5-minute scalps to 24-hour positions. Mix windows to match conviction.
+                </p>
               </div>
-              <h3 className="bento-title">Multiple Time Windows</h3>
-              <p className="bento-description">
-                From 5-minute scalps to 24-hour positions. Mix windows to match your conviction timeline.
-              </p>
             </div>
 
             <div className="bento-card">
-              <div className="bento-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
+              <div className="bento-card-border" />
+              <div className="bento-card-inner">
+                <div className="bento-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                  </svg>
+                </div>
+                <h3 className="bento-title">Instant</h3>
+                <p className="bento-description">
+                  Markets resolve automatically. Redeem winners immediately — no counterparty risk.
+                </p>
               </div>
-              <h3 className="bento-title">Instant Settlement</h3>
-              <p className="bento-description">
-                Markets resolve automatically. Redeem winning positions immediately — no counterparty risk.
-              </p>
             </div>
           </div>
         </section>

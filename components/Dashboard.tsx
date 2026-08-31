@@ -95,35 +95,150 @@ export default function Dashboard() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
 
         :root {
-          --accent-green: #00E28A;
-          --accent-orange: #FF6B35;
-          --accent-gradient: linear-gradient(135deg, var(--accent-orange), var(--accent-green));
-          --glass-bg: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(0, 226, 138, 0.04));
-          --glass-border: rgba(255, 255, 255, 0.08);
+          --accent-green: #00FF94;
+          --accent-orange: #FF5722;
+          --bg-dark: #0a0a0c;
         }
 
         .dashboard {
           min-height: 100vh;
-          background: #030305;
+          background: var(--bg-dark);
           color: #fff;
           font-family: Inter, -apple-system, sans-serif;
         }
 
-        /* Glass Effect */
-        .glass {
-          background: var(--glass-bg);
-          border: 1px solid var(--glass-border);
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
+        /* Animated Border Card */
+        .border-card {
+          position: relative;
+          background: transparent;
+          border: none;
+          padding: 2px;
         }
 
-        .glass-strong {
-          background: linear-gradient(145deg, rgba(255, 107, 53, 0.12), rgba(0, 226, 138, 0.06));
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(24px) saturate(200%);
-          box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        .border-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: conic-gradient(
+            from 0deg,
+            var(--accent-orange) 0deg,
+            var(--accent-orange) 360deg
+          );
+          transition: none;
+          z-index: -1;
+        }
+
+        .border-card::after {
+          content: '';
+          position: absolute;
+          inset: 2px;
+          background: var(--bg-dark);
+          z-index: -1;
+        }
+
+        .border-card:hover::before,
+        .border-card:active::before,
+        .border-card.active::before {
+          animation: border-sweep 0.6s ease forwards;
+        }
+
+        @keyframes border-sweep {
+          0% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-green) 0deg,
+              var(--accent-orange) 0deg,
+              var(--accent-orange) 360deg
+            );
+          }
+          25% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-green) 0deg,
+              var(--accent-green) 90deg,
+              var(--accent-orange) 90deg,
+              var(--accent-orange) 360deg
+            );
+          }
+          50% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-green) 0deg,
+              var(--accent-green) 180deg,
+              var(--accent-orange) 180deg,
+              var(--accent-orange) 360deg
+            );
+          }
+          75% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-green) 0deg,
+              var(--accent-green) 270deg,
+              var(--accent-orange) 270deg,
+              var(--accent-orange) 360deg
+            );
+          }
+          100% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-green) 0deg,
+              var(--accent-green) 360deg
+            );
+          }
+        }
+
+        .border-card:not(:hover):not(:active):not(.active)::before {
+          animation: border-sweep-reverse 0.6s ease forwards;
+        }
+
+        @keyframes border-sweep-reverse {
+          0% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-orange) 0deg,
+              var(--accent-green) 0deg,
+              var(--accent-green) 360deg
+            );
+          }
+          25% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-orange) 0deg,
+              var(--accent-orange) 90deg,
+              var(--accent-green) 90deg,
+              var(--accent-green) 360deg
+            );
+          }
+          50% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-orange) 0deg,
+              var(--accent-orange) 180deg,
+              var(--accent-green) 180deg,
+              var(--accent-green) 360deg
+            );
+          }
+          75% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-orange) 0deg,
+              var(--accent-orange) 270deg,
+              var(--accent-green) 270deg,
+              var(--accent-green) 360deg
+            );
+          }
+          100% {
+            background: conic-gradient(
+              from 0deg,
+              var(--accent-orange) 0deg,
+              var(--accent-orange) 360deg
+            );
+          }
+        }
+
+        .border-card-inner {
+          background: var(--bg-dark);
+          height: 100%;
         }
 
         /* Header */
@@ -135,9 +250,8 @@ export default function Dashboard() {
           align-items: center;
           justify-content: space-between;
           padding: 16px 32px;
-          background: rgba(3, 3, 5, 0.85);
-          backdrop-filter: blur(20px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+          background: var(--bg-dark);
+          border-bottom: 2px solid var(--accent-orange);
         }
 
         .dash-brand {
@@ -150,40 +264,39 @@ export default function Dashboard() {
         .dash-brand-name {
           font-size: 22px;
           font-weight: 700;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: #fff;
         }
 
         .dash-tabs {
           display: flex;
-          gap: 4px;
-          padding: 4px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 14px;
+          gap: 0;
+          border: 2px solid var(--accent-orange);
         }
 
         .dash-tab {
-          padding: 10px 20px;
+          padding: 10px 24px;
           font-size: 14px;
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.5);
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.6);
           background: transparent;
           border: none;
-          border-radius: 10px;
+          border-right: 2px solid var(--accent-orange);
           cursor: pointer;
           transition: all 200ms;
         }
 
+        .dash-tab:last-child {
+          border-right: none;
+        }
+
         .dash-tab:hover {
-          color: rgba(255, 255, 255, 0.8);
+          color: #fff;
+          background: rgba(255, 87, 34, 0.1);
         }
 
         .dash-tab.active {
           color: #000;
-          background: var(--accent-gradient);
-          box-shadow: 0 2px 12px rgba(255, 107, 53, 0.3);
+          background: var(--accent-orange);
         }
 
         .dash-header-actions {
@@ -192,38 +305,53 @@ export default function Dashboard() {
           gap: 16px;
         }
 
-        /* Glass Connect Button Override */
-        .connect-wrapper [data-testid="rk-connect-button"] {
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(0, 226, 138, 0.1)) !important;
-          border: 1px solid rgba(255, 255, 255, 0.12) !important;
-          backdrop-filter: blur(20px) !important;
+        /* Connect Wallet Button - Clear and Readable */
+        .connect-btn-wrapper {
+          position: relative;
+          padding: 2px;
+          background: var(--accent-orange);
+          transition: background 0.4s ease;
+        }
+
+        .connect-btn-wrapper:hover {
+          background: var(--accent-green);
+        }
+
+        .connect-btn-wrapper > div {
+          background: var(--bg-dark) !important;
+        }
+
+        .connect-btn-wrapper button {
+          background: transparent !important;
+          border: none !important;
+          color: #fff !important;
+          font-weight: 600 !important;
+          font-size: 14px !important;
+          padding: 12px 20px !important;
         }
 
         .create-btn {
+          position: relative;
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 12px 24px;
+          padding: 14px 28px;
           font-size: 14px;
-          font-weight: 600;
+          font-weight: 700;
           color: #000;
-          background: var(--accent-gradient);
+          background: var(--accent-orange);
           border: none;
-          border-radius: 12px;
           cursor: pointer;
-          box-shadow: 0 4px 20px rgba(255, 107, 53, 0.35);
-          transition: all 250ms;
+          transition: all 200ms;
         }
 
         .create-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(255, 107, 53, 0.45);
+          background: var(--accent-green);
         }
 
         .create-btn:disabled {
-          opacity: 0.5;
+          opacity: 0.4;
           cursor: not-allowed;
-          transform: none;
         }
 
         /* Main Layout */
@@ -242,36 +370,48 @@ export default function Dashboard() {
 
         .stat-card {
           flex: 1;
-          padding: 28px;
-          border-radius: 20px;
+          position: relative;
+          background: transparent;
+        }
+
+        .stat-card-border {
+          position: absolute;
+          inset: 0;
+          background: var(--accent-orange);
+          z-index: 0;
+        }
+
+        .stat-card-inner {
+          position: relative;
+          z-index: 1;
+          margin: 2px;
+          padding: 24px;
+          background: var(--bg-dark);
         }
 
         .stat-label {
-          font-size: 13px;
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.5);
+          font-size: 12px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.4);
+          text-transform: uppercase;
+          letter-spacing: 1px;
           margin-bottom: 8px;
         }
 
         .stat-value {
-          font-size: 32px;
+          font-size: 36px;
           font-weight: 700;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--accent-orange);
         }
 
         .stat-change {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          margin-top: 8px;
-          padding: 4px 10px;
+          gap: 6px;
+          margin-top: 12px;
           font-size: 12px;
           font-weight: 600;
           color: var(--accent-green);
-          background: rgba(0, 226, 138, 0.1);
-          border-radius: 6px;
         }
 
         /* Markets Section */
@@ -289,114 +429,123 @@ export default function Dashboard() {
 
         .filter-pills {
           display: flex;
-          gap: 8px;
+          gap: 0;
+          border: 2px solid var(--accent-orange);
         }
 
         .filter-pill {
-          padding: 8px 16px;
+          padding: 8px 20px;
           font-size: 13px;
-          font-weight: 500;
+          font-weight: 600;
           color: rgba(255, 255, 255, 0.5);
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 8px;
+          background: transparent;
+          border: none;
+          border-right: 2px solid var(--accent-orange);
           cursor: pointer;
           transition: all 200ms;
         }
 
+        .filter-pill:last-child {
+          border-right: none;
+        }
+
         .filter-pill:hover {
-          color: rgba(255, 255, 255, 0.8);
-          border-color: rgba(255, 255, 255, 0.1);
+          color: #fff;
+          background: rgba(255, 87, 34, 0.15);
         }
 
         .filter-pill.active {
-          color: #fff;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(0, 226, 138, 0.1));
-          border-color: rgba(255, 107, 53, 0.3);
+          color: #000;
+          background: var(--accent-orange);
         }
 
         /* Market Grid */
         .market-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 16px;
+          gap: 20px;
         }
 
         .market-card {
           position: relative;
-          padding: 24px;
-          border-radius: 20px;
+          background: transparent;
           cursor: pointer;
-          transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
-          overflow: hidden;
+          transition: transform 200ms;
         }
 
-        .market-card::before {
-          content: '';
+        .market-card-border {
           position: absolute;
           inset: 0;
-          background: radial-gradient(ellipse at 30% 0%, rgba(255, 107, 53, 0.1), transparent 60%);
-          opacity: 0;
-          transition: opacity 300ms;
+          background: conic-gradient(from 0deg, var(--accent-orange) 0deg, var(--accent-orange) 360deg);
+          transition: none;
+          z-index: 0;
+        }
+
+        .market-card:hover .market-card-border,
+        .market-card:active .market-card-border {
+          animation: border-sweep 0.5s ease forwards;
+        }
+
+        .market-card:not(:hover):not(:active) .market-card-border {
+          animation: border-sweep-reverse 0.5s ease forwards;
+        }
+
+        .market-card-inner {
+          position: relative;
+          z-index: 1;
+          margin: 2px;
+          padding: 24px;
+          background: var(--bg-dark);
         }
 
         .market-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(255, 107, 53, 0.2);
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .market-card:hover::before {
-          opacity: 1;
+          transform: translateY(-2px);
         }
 
         .market-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 16px;
-          position: relative;
+          margin-bottom: 20px;
         }
 
         .market-asset {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
 
         .market-asset-icon {
-          width: 40px;
-          height: 40px;
+          width: 44px;
+          height: 44px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(0, 226, 138, 0.1));
-          border-radius: 12px;
-          font-size: 18px;
+          border: 2px solid var(--accent-orange);
+          font-size: 20px;
           font-weight: 700;
+          color: var(--accent-orange);
         }
 
         .market-asset-name {
-          font-size: 18px;
-          font-weight: 600;
+          font-size: 20px;
+          font-weight: 700;
         }
 
         .market-interval {
-          padding: 6px 12px;
+          padding: 6px 14px;
           font-size: 12px;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.7);
-          background: rgba(255, 255, 255, 0.06);
-          border-radius: 6px;
+          font-weight: 700;
+          color: var(--accent-green);
+          border: 2px solid var(--accent-green);
         }
 
         .market-expiry {
           display: flex;
           align-items: center;
-          gap: 16px;
-          padding-top: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.04);
-          position: relative;
+          gap: 24px;
+          padding-top: 20px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .market-expiry-item {
@@ -406,47 +555,53 @@ export default function Dashboard() {
         }
 
         .market-expiry-label {
-          font-size: 11px;
-          color: rgba(255, 255, 255, 0.4);
+          font-size: 10px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.3);
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 1px;
         }
 
         .market-expiry-value {
-          font-size: 15px;
-          font-weight: 600;
+          font-size: 16px;
+          font-weight: 700;
+          color: #fff;
         }
 
         .market-expiry-value.urgent {
-          color: var(--accent-orange);
+          color: #FF3D00;
         }
 
         .market-expiry-value.soon {
-          color: #FFB800;
+          color: var(--accent-orange);
         }
 
         .market-trade-btn {
           margin-left: auto;
-          padding: 10px 20px;
+          padding: 10px 24px;
           font-size: 13px;
-          font-weight: 600;
+          font-weight: 700;
           color: #000;
-          background: var(--accent-gradient);
+          background: var(--accent-orange);
           border: none;
-          border-radius: 10px;
           cursor: pointer;
           opacity: 0;
-          transform: translateY(4px);
+          transform: translateX(10px);
           transition: all 200ms;
+        }
+
+        .market-trade-btn:hover {
+          background: var(--accent-green);
         }
 
         .market-card:hover .market-trade-btn {
           opacity: 1;
-          transform: translateY(0);
+          transform: translateX(0);
         }
 
         /* Empty State */
         .empty-state {
+          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -455,27 +610,41 @@ export default function Dashboard() {
           text-align: center;
         }
 
+        .empty-state-border {
+          position: absolute;
+          inset: 0;
+          background: var(--accent-orange);
+        }
+
+        .empty-state-inner {
+          position: relative;
+          z-index: 1;
+          margin: 2px;
+          padding: 60px 40px;
+          background: var(--bg-dark);
+          width: calc(100% - 4px);
+        }
+
         .empty-icon {
-          width: 80px;
-          height: 80px;
+          width: 72px;
+          height: 72px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(0, 226, 138, 0.05));
-          border-radius: 24px;
-          margin-bottom: 24px;
-          font-size: 32px;
+          border: 2px solid var(--accent-orange);
+          margin: 0 auto 24px;
+          font-size: 28px;
         }
 
         .empty-title {
           font-size: 20px;
-          font-weight: 600;
+          font-weight: 700;
           margin-bottom: 8px;
         }
 
         .empty-desc {
           font-size: 14px;
-          color: rgba(255, 255, 255, 0.5);
+          color: rgba(255, 255, 255, 0.4);
         }
 
         /* Loading */
@@ -491,8 +660,7 @@ export default function Dashboard() {
           height: 40px;
           border: 3px solid rgba(255, 255, 255, 0.1);
           border-top-color: var(--accent-orange);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
+          animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
@@ -586,7 +754,7 @@ export default function Dashboard() {
               </svg>
               Create Basket
             </button>
-            <div className="connect-wrapper">
+            <div className="connect-btn-wrapper">
               <ConnectButton />
             </div>
           </div>
@@ -598,24 +766,31 @@ export default function Dashboard() {
             <>
               {/* Stats */}
               <div className="dash-hero">
-                <div className="stat-card glass">
-                  <div className="stat-label">Live Markets</div>
-                  <div className="stat-value">{markets.length}</div>
-                  <div className="stat-change">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 9V3M6 3L3 6M6 3L9 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                    Active now
+                <div className="stat-card">
+                  <div className="stat-card-border" />
+                  <div className="stat-card-inner">
+                    <div className="stat-label">Live Markets</div>
+                    <div className="stat-value">{markets.length}</div>
+                    <div className="stat-change">
+                      <span style={{ width: 8, height: 8, background: 'var(--accent-green)' }} />
+                      Active now
+                    </div>
                   </div>
                 </div>
-                <div className="stat-card glass">
-                  <div className="stat-label">Your Baskets</div>
-                  <div className="stat-value">{userBaskets.length}</div>
+                <div className="stat-card">
+                  <div className="stat-card-border" />
+                  <div className="stat-card-inner">
+                    <div className="stat-label">Your Baskets</div>
+                    <div className="stat-value">{userBaskets.length}</div>
+                  </div>
                 </div>
-                <div className="stat-card glass">
-                  <div className="stat-label">Pending Positions</div>
-                  <div className="stat-value">
-                    {userBaskets.reduce((sum, b) => sum + b.pendingCount, 0)}
+                <div className="stat-card">
+                  <div className="stat-card-border" />
+                  <div className="stat-card-inner">
+                    <div className="stat-label">Pending</div>
+                    <div className="stat-value">
+                      {userBaskets.reduce((sum, b) => sum + b.pendingCount, 0)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -650,16 +825,22 @@ export default function Dashboard() {
                   <div className="loading-spinner" />
                 </div>
               ) : error ? (
-                <div className="empty-state glass">
-                  <div className="empty-icon">⚠️</div>
-                  <h3 className="empty-title">Failed to Load Markets</h3>
-                  <p className="empty-desc">{error}</p>
+                <div className="empty-state">
+                  <div className="empty-state-border" />
+                  <div className="empty-state-inner">
+                    <div className="empty-icon">⚠️</div>
+                    <h3 className="empty-title">Failed to Load Markets</h3>
+                    <p className="empty-desc">{error}</p>
+                  </div>
                 </div>
               ) : filteredMarkets.length === 0 ? (
-                <div className="empty-state glass">
-                  <div className="empty-icon">📊</div>
-                  <h3 className="empty-title">No Markets Available</h3>
-                  <p className="empty-desc">Check back soon for new trading opportunities.</p>
+                <div className="empty-state">
+                  <div className="empty-state-border" />
+                  <div className="empty-state-inner">
+                    <div className="empty-icon">📊</div>
+                    <h3 className="empty-title">No Markets Available</h3>
+                    <p className="empty-desc">Check back soon for new trading opportunities.</p>
+                  </div>
                 </div>
               ) : (
                 <div className="market-grid">
@@ -669,33 +850,36 @@ export default function Dashboard() {
                     return (
                       <div
                         key={market.id}
-                        className="market-card glass"
+                        className="market-card"
                         onClick={() => setSelectedMarketId(market.id)}
                       >
-                        <div className="market-header">
-                          <div className="market-asset">
-                            <div className="market-asset-icon">
-                              {market.asset === "BTC" ? "₿" : "Ξ"}
+                        <div className="market-card-border" />
+                        <div className="market-card-inner">
+                          <div className="market-header">
+                            <div className="market-asset">
+                              <div className="market-asset-icon">
+                                {market.asset === "BTC" ? "₿" : "Ξ"}
+                              </div>
+                              <span className="market-asset-name">{market.asset}</span>
                             </div>
-                            <span className="market-asset-name">{market.asset}</span>
+                            <span className="market-interval">{market.interval}</span>
                           </div>
-                          <span className="market-interval">{market.interval}</span>
-                        </div>
 
-                        <div className="market-expiry">
-                          <div className="market-expiry-item">
-                            <span className="market-expiry-label">Expires in</span>
-                            <span className={`market-expiry-value ${isUrgent ? "urgent" : isSoon ? "soon" : ""}`}>
-                              {market.expiresInMin}m
-                            </span>
+                          <div className="market-expiry">
+                            <div className="market-expiry-item">
+                              <span className="market-expiry-label">Expires</span>
+                              <span className={`market-expiry-value ${isUrgent ? "urgent" : isSoon ? "soon" : ""}`}>
+                                {market.expiresInMin}m
+                              </span>
+                            </div>
+                            <div className="market-expiry-item">
+                              <span className="market-expiry-label">At</span>
+                              <span className="market-expiry-value">
+                                {new Date(market.expiry).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                            <button className="market-trade-btn">Trade →</button>
                           </div>
-                          <div className="market-expiry-item">
-                            <span className="market-expiry-label">At</span>
-                            <span className="market-expiry-value">
-                              {new Date(market.expiry).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
-                          <button className="market-trade-btn">Trade</button>
                         </div>
                       </div>
                     );
