@@ -34,28 +34,41 @@ export async function GET() {
       })
       .slice(0, 50);
 
-    // Map directly without async - legCount is now stored on basket doc
-    const baskets = filteredDocs.map((doc) => {
-      const data = doc.data() as BasketDoc;
+    // Fetch intervals from legs for each basket (in parallel for speed)
+    const baskets = await Promise.all(
+      filteredDocs.map(async (doc) => {
+        const data = doc.data() as BasketDoc;
 
-      // Truncate wallet address for display
-      const creatorWallet = data.userId || "";
-      const creatorDisplay = creatorWallet
-        ? `${creatorWallet.slice(0, 6)}...${creatorWallet.slice(-4)}`
-        : "Unknown";
+        // Truncate wallet address for display
+        const creatorWallet = data.userId || "";
+        const creatorDisplay = creatorWallet
+          ? `${creatorWallet.slice(0, 6)}...${creatorWallet.slice(-4)}`
+          : "Unknown";
 
-      return {
-        id: doc.id,
-        asset: data.asset,
-        totalSpent: data.totalSpent,
-        legCount: data.legCount ?? 0, // Use stored value, fallback to 0 for old baskets
-        status: data.status,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
-        sharedAt: data.sharedAt?.toDate?.()?.toISOString() ?? null,
-        creatorWallet,
-        creatorDisplay,
-      };
-    });
+        // Fetch legs to get intervals
+        let intervals: string[] = [];
+        try {
+          const legsSnap = await getDocs(collection(db, "baskets", doc.id, "legs"));
+          const legIntervals = legsSnap.docs.map((legDoc) => legDoc.data().interval as string);
+          intervals = [...new Set(legIntervals)]; // Unique intervals
+        } catch {
+          // Ignore errors, just return empty intervals
+        }
+
+        return {
+          id: doc.id,
+          asset: data.asset,
+          totalSpent: data.totalSpent,
+          legCount: data.legCount ?? intervals.length ?? 0,
+          intervals, // e.g., ["5min", "15min"]
+          status: data.status,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
+          sharedAt: data.sharedAt?.toDate?.()?.toISOString() ?? null,
+          creatorWallet,
+          creatorDisplay,
+        };
+      })
+    );
 
     return NextResponse.json({ baskets });
   } catch (err) {

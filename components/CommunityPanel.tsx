@@ -9,6 +9,7 @@ interface CommunityBasket {
   asset: string;
   totalSpent: number;
   legCount: number;
+  intervals: string[]; // e.g., ["5min", "15min"]
   status: string;
   createdAt: string;
   creatorWallet: string;
@@ -16,12 +17,14 @@ interface CommunityBasket {
 }
 
 type AssetFilter = "all" | "BTC" | "ETH" | "BTC+ETH";
+type IntervalFilter = "all" | "5min" | "15min" | "1hr";
 
 export default function CommunityPanel() {
   const [baskets, setBaskets] = useState<CommunityBasket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<AssetFilter>("all");
+  const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
+  const [intervalFilter, setIntervalFilter] = useState<IntervalFilter>("all");
 
   const fetchCommunityBaskets = useCallback(async () => {
     setLoading(true);
@@ -43,11 +46,19 @@ export default function CommunityPanel() {
   }, [fetchCommunityBaskets]);
 
   const filteredBaskets = baskets.filter((b) => {
-    if (filter === "all") return true;
-    return b.asset === filter || b.asset === "BTC + ETH";
+    // Asset filter
+    if (assetFilter !== "all") {
+      if (b.asset !== assetFilter && b.asset !== "BTC + ETH") return false;
+    }
+    // Interval filter
+    if (intervalFilter !== "all") {
+      if (!b.intervals || !b.intervals.includes(intervalFilter)) return false;
+    }
+    return true;
   });
 
   const availableAssets = [...new Set(baskets.map((b) => b.asset))];
+  const availableIntervals = [...new Set(baskets.flatMap((b) => b.intervals || []))];
 
   const formatTimeAgo = (dateString: string | null) => {
     if (!dateString) return "Recently";
@@ -80,62 +91,59 @@ export default function CommunityPanel() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <span className="text-sm text-white/40">Filter by:</span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
-              filter === "all"
-                ? "bg-gradient-to-r from-orange-500/15 to-green-500/10 border-orange-500/30 text-white"
-                : "bg-white/[0.02] border-white/6 text-white/50 hover:border-white/10 hover:text-white/70"
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilter("BTC")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all flex items-center gap-2 ${
-              filter === "BTC"
-                ? "bg-gradient-to-r from-orange-500/15 to-green-500/10 border-orange-500/30 text-white"
-                : "bg-white/[0.02] border-white/6 text-white/50 hover:border-white/10 hover:text-white/70"
-            }`}
-          >
-            <AssetIcon asset="BTC" size={16} />
-            BTC
-          </button>
-          <button
-            onClick={() => setFilter("ETH")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all flex items-center gap-2 ${
-              filter === "ETH"
-                ? "bg-gradient-to-r from-orange-500/15 to-green-500/10 border-orange-500/30 text-white"
-                : "bg-white/[0.02] border-white/6 text-white/50 hover:border-white/10 hover:text-white/70"
-            }`}
-          >
-            <AssetIcon asset="ETH" size={16} />
-            ETH
-          </button>
-          <button
-            onClick={() => setFilter("BTC+ETH")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all flex items-center gap-2 ${
-              filter === "BTC+ETH"
-                ? "bg-gradient-to-r from-orange-500/15 to-green-500/10 border-orange-500/30 text-white"
-                : "bg-white/[0.02] border-white/6 text-white/50 hover:border-white/10 hover:text-white/70"
-            }`}
-          >
-            <span className="flex -space-x-1">
-              <AssetIcon asset="BTC" size={14} />
-              <AssetIcon asset="ETH" size={14} />
-            </span>
-            Cross
-          </button>
+      <div className="mb-6 space-y-3">
+        {/* Asset Filter Row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-white/40 w-16">Asset:</span>
+          <div className="flex gap-2">
+            {(["all", "BTC", "ETH", "BTC+ETH"] as const).map((value) => (
+              <button
+                key={value}
+                onClick={() => setAssetFilter(value)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all flex items-center gap-2 ${
+                  assetFilter === value
+                    ? "bg-gradient-to-r from-orange-500/15 to-green-500/10 border-orange-500/30 text-white"
+                    : "bg-white/[0.02] border-white/6 text-white/50 hover:border-white/10 hover:text-white/70"
+                }`}
+              >
+                {value === "BTC" && <AssetIcon asset="BTC" size={14} />}
+                {value === "ETH" && <AssetIcon asset="ETH" size={14} />}
+                {value === "BTC+ETH" && (
+                  <span className="flex -space-x-1">
+                    <AssetIcon asset="BTC" size={12} />
+                    <AssetIcon asset="ETH" size={12} />
+                  </span>
+                )}
+                {value === "all" ? "All" : value === "BTC+ETH" ? "Cross" : value}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Refresh */}
-        <button
-          onClick={fetchCommunityBaskets}
-          disabled={loading}
-          className="ml-auto flex items-center gap-2 px-3 py-2 text-sm text-white/50 hover:text-white/70 transition-colors disabled:opacity-50"
+        {/* Interval Filter Row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-white/40 w-16">Window:</span>
+          <div className="flex gap-2">
+            {(["all", "5min", "15min", "1hr"] as const).map((value) => (
+              <button
+                key={value}
+                onClick={() => setIntervalFilter(value)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all ${
+                  intervalFilter === value
+                    ? "bg-gradient-to-r from-orange-500/15 to-green-500/10 border-orange-500/30 text-white"
+                    : "bg-white/[0.02] border-white/6 text-white/50 hover:border-white/10 hover:text-white/70"
+                }`}
+              >
+                {value === "all" ? "All" : value}
+              </button>
+            ))}
+          </div>
+
+          {/* Refresh */}
+          <button
+            onClick={fetchCommunityBaskets}
+            disabled={loading}
+            className="ml-auto flex items-center gap-2 px-3 py-2 text-sm text-white/50 hover:text-white/70 transition-colors disabled:opacity-50"
         >
           <svg
             className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
@@ -152,6 +160,7 @@ export default function CommunityPanel() {
           </svg>
           Refresh
         </button>
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -197,25 +206,25 @@ export default function CommunityPanel() {
         <div className="rounded-2xl border border-white/6 bg-white/[0.02] p-16 text-center">
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/10 to-green-500/5">
             <span className="text-4xl">
-              {filter !== "all" ? "🔍" : "🌐"}
+              {assetFilter !== "all" || intervalFilter !== "all" ? "🔍" : "🌐"}
             </span>
           </div>
           <h3 className="text-lg font-semibold">
-            {filter !== "all"
-              ? `No ${filter} Baskets Found`
+            {assetFilter !== "all" || intervalFilter !== "all"
+              ? `No Shared Baskets Found`
               : "No Shared Baskets Yet"}
           </h3>
           <p className="mt-2 text-sm text-white/40 max-w-md mx-auto">
-            {filter !== "all"
-              ? `No one has shared a ${filter} basket yet. Be the first to create and share one!`
+            {assetFilter !== "all" || intervalFilter !== "all"
+              ? `No shared baskets match your filters${assetFilter !== "all" ? ` (${assetFilter})` : ""}${intervalFilter !== "all" ? ` (${intervalFilter})` : ""}. Try adjusting the filters or be the first to share one!`
               : "Create a basket and share it with the community to be the first!"}
           </p>
-          {filter !== "all" && (
+          {(assetFilter !== "all" || intervalFilter !== "all") && (
             <button
-              onClick={() => setFilter("all")}
+              onClick={() => { setAssetFilter("all"); setIntervalFilter("all"); }}
               className="mt-6 px-6 py-2 bg-white/5 border border-white/10 rounded-lg text-white/70 hover:bg-white/10 transition-colors"
             >
-              Show All Baskets
+              Clear Filters
             </button>
           )}
         </div>
@@ -255,16 +264,31 @@ export default function CommunityPanel() {
                   </span>
                 </div>
 
-                {/* Creator */}
-                <div className="mb-4 flex items-center gap-2 text-sm">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5">
-                    <svg className="w-3 h-3 text-white/40" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
+                {/* Creator & Intervals */}
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5">
+                      <svg className="w-3 h-3 text-white/40" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-white/50 font-mono text-xs">
+                      {basket.creatorDisplay}
+                    </span>
                   </div>
-                  <span className="text-white/50 font-mono text-xs">
-                    {basket.creatorDisplay}
-                  </span>
+                  {/* Interval badges */}
+                  {basket.intervals && basket.intervals.length > 0 && (
+                    <div className="flex gap-1">
+                      {basket.intervals.slice(0, 3).map((interval) => (
+                        <span
+                          key={interval}
+                          className="px-1.5 py-0.5 text-[10px] font-medium bg-white/5 text-white/50 rounded"
+                        >
+                          {interval}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Stats */}
