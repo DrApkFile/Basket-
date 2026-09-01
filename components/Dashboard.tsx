@@ -61,7 +61,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchMarkets();
-    const interval = setInterval(fetchMarkets, 60000);
+    // Poll markets every 20 seconds for faster expiry updates
+    const interval = setInterval(fetchMarkets, 20000);
     return () => clearInterval(interval);
   }, [fetchMarkets]);
 
@@ -83,6 +84,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchUserBaskets();
+    // Poll baskets every 15 seconds for status updates
+    const interval = setInterval(fetchUserBaskets, 15000);
+    return () => clearInterval(interval);
   }, [fetchUserBaskets]);
 
   const filteredMarkets = markets.filter((m) => {

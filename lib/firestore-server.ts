@@ -111,12 +111,13 @@ export async function updateLegStatus(
   let outcome: LegOutcome | null = null;
 
   // Determine outcome based on on-chain status
-  if (onchain.status === 4) {
+  // Status codes: 0=Pending, 1=Trading, 2=Halted, 3=Resolved, 4=Voided
+  if (onchain.status === 3) {
     // Resolved — check if winning side
     // For now, we'll set to "pending" until we check the actual outcome
     // The full check requires comparing position side to winning outcome
     outcome = "pending";
-  } else if (onchain.status === 5) {
+  } else if (onchain.status === 4) {
     // Voided — both sides redeem at 0.5
     outcome = "voided";
   }

@@ -51,13 +51,14 @@ export async function findRedeemableLegs(
       // Check on-chain status directly — this is the fix for the gotcha
       const onchain = await exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
 
-      // Status 4 = Resolved, 5 = Voided — both are redeemable
-      if (onchain.status === 4 || onchain.status === 5) {
+      // Status codes: 0=Pending, 1=Trading, 2=Halted, 3=Resolved, 4=Voided
+      // Status 3 = Resolved, 4 = Voided — both are redeemable
+      if (onchain.status === 3 || onchain.status === 4) {
         redeemable.push({ ...leg, onchainStatus: onchain.status });
       }
     } catch {
       // If we can't read the market, check cached status
-      if (leg.onchainStatus === 4 || leg.onchainStatus === 5) {
+      if (leg.onchainStatus === 3 || leg.onchainStatus === 4) {
         redeemable.push(leg);
       }
     }
@@ -118,10 +119,11 @@ export async function redeemBasketLegs(
       const onchain = await exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
       let payout = 0;
 
-      if (onchain.status === 5) {
+      // Status codes: 0=Pending, 1=Trading, 2=Halted, 3=Resolved, 4=Voided
+      if (onchain.status === 4) {
         // Voided — both sides get 0.5
         payout = held * 0.5;
-      } else if (onchain.status === 4) {
+      } else if (onchain.status === 3) {
         // Resolved — need to check if we won
         // The SDK's redeem handles this, but for payout calculation:
         // If redeem succeeded with non-zero value, we won

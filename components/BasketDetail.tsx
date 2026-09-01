@@ -98,19 +98,18 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
     }
   }, [basketId]);
 
-  // Initial fetch and polling for pending baskets
+  // Initial fetch and polling for status updates
   useEffect(() => {
     fetchNarration();
 
-    // Poll every 30 seconds if there are pending legs
+    // Poll every 10 seconds for faster state updates
+    // Poll regardless of pending count to catch state changes quickly
     const interval = setInterval(() => {
-      if (narration?.summary?.pending && narration.summary.pending > 0) {
-        fetchNarration();
-      }
-    }, 30000);
+      fetchNarration();
+    }, 10000);
 
     return () => clearInterval(interval);
-  }, [fetchNarration, narration?.summary?.pending]);
+  }, [fetchNarration]);
 
   // Handle batch redemption
   async function handleRedeem() {
