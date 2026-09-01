@@ -59,8 +59,11 @@ function buildLiquidityNote(market: {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as BasketConstructInput & { maxExpiryMinutes?: number };
-    const { asset, numWindows, maxSpend, riskTolerance, crossAsset, maxExpiryMinutes } = body;
+    const body = (await request.json()) as BasketConstructInput & {
+      maxExpiryMinutes?: number;
+      intervalMinutes?: number; // Filter by market interval type (5, 15, 60, etc.)
+    };
+    const { asset, numWindows, maxSpend, riskTolerance, crossAsset, maxExpiryMinutes, intervalMinutes } = body;
 
     // Determine which assets to consider
     const isCrossAsset = crossAsset === true || asset === "BTC+ETH";
@@ -95,13 +98,22 @@ export async function POST(request: NextRequest) {
     // Calculate max expiry time based on user preference
     const maxExpirySeconds = maxExpiryMinutes ? maxExpiryMinutes * 60 : null;
 
+    // Parse interval filter (e.g., 5 -> "5min", 15 -> "15min", 60 -> "1hr")
+    const targetInterval = intervalMinutes
+      ? intervalMinutes >= 60
+        ? `${intervalMinutes / 60}hr`
+        : `${intervalMinutes}min`
+      : null;
+
     // Filter to: binary, active, matching asset prefix(es), within expiry constraints
     const liveMarkets = Object.values(exchange.markets).filter((m) => {
       if (m.type !== "binary" || !m.active) return false;
       // m.base is like "ETH-244039-25AUG26-2155", extract prefix
       const marketAsset = m.base.split("-")[0];
       if (!targetAssets.includes(marketAsset)) return false;
-      const expiry = Number((m.info as BinaryMarket).expiry);
+
+      const info = m.info as BinaryMarket;
+      const expiry = Number(info.expiry);
       const timeToExpiry = expiry - now;
 
       // Must expire after minimum buffer
@@ -110,31 +122,46 @@ export async function POST(request: NextRequest) {
       // If maxExpiryMinutes specified, must expire within that window
       if (maxExpirySeconds && timeToExpiry > maxExpirySeconds) return false;
 
+      // If interval filter specified, must match the market's interval type
+      if (targetInterval && info.interval !== targetInterval) return false;
+
       return true;
     });
 
     if (liveMarkets.length === 0) {
-      // Check what assets ARE available (without time constraint)
+      // Check what assets ARE available (without time/interval constraint)
       const allLive = Object.values(exchange.markets).filter((m) => {
         if (m.type !== "binary" || !m.active) return false;
         const expiry = Number((m.info as BinaryMarket).expiry);
         return expiry > now + MIN_TIME_BUFFER;
       });
       const availableAssets = [...new Set(allLive.map((m) => m.base.split("-")[0]))];
+      const availableIntervals = [...new Set(allLive.map((m) => (m.info as BinaryMarket).interval))];
 
       const timeConstraintMsg = maxExpiryMinutes
         ? ` expiring within ${maxExpiryMinutes} minutes`
         : "";
+      const intervalConstraintMsg = targetInterval
+        ? ` with ${targetInterval} interval`
+        : "";
+
+      let hint = "";
+      if (targetInterval && !availableIntervals.includes(targetInterval)) {
+        hint = `No ${targetInterval} markets available. Try: ${availableIntervals.join(", ")}`;
+      } else if (maxExpiryMinutes || targetInterval) {
+        hint = `Try removing filters. Available intervals: ${availableIntervals.join(", ")}`;
+      } else if (availableAssets.length > 0) {
+        hint = `Try one of: ${availableAssets.join(", ")}`;
+      } else {
+        hint = "No markets available at all right now.";
+      }
 
       return NextResponse.json(
         {
-          error: `No live ${assetLabel} markets${timeConstraintMsg} available right now.`,
+          error: `No live ${assetLabel} markets${intervalConstraintMsg}${timeConstraintMsg} available right now.`,
           availableAssets,
-          hint: maxExpiryMinutes
-            ? `Try removing the time filter or selecting a longer window.`
-            : availableAssets.length > 0
-              ? `Try one of: ${availableAssets.join(", ")}`
-              : "No markets available at all right now."
+          availableIntervals,
+          hint,
         },
         { status: 404 }
       );
@@ -241,10 +268,13 @@ export async function POST(request: NextRequest) {
     if (tradingMarkets.length < numWindows) {
       // Fewer available than requested - proceed but be transparent
       const intervalTypes = [...new Set(tradingMarkets.map((m) => m.interval))];
+      const intervalInfo = targetInterval
+        ? `Only ${tradingMarkets.length} ${targetInterval} markets found.`
+        : `Available intervals: ${intervalTypes.join(", ")}.`;
       availabilityNote = {
         requested: numWindows,
         available: tradingMarkets.length,
-        message: `Only ${tradingMarkets.length} ${assetLabel} windows are live right now out of ${numWindows} requested. Available intervals: ${intervalTypes.join(", ")}. The rest are either between windows or already settled.`,
+        message: `Only ${tradingMarkets.length} ${assetLabel} windows are live right now out of ${numWindows} requested. ${intervalInfo} The rest are either between windows or already settled.`,
       };
     }
 

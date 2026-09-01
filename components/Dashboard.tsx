@@ -9,7 +9,7 @@ import BasketModal from "./BasketModal";
 import CommunityPanel from "./CommunityPanel";
 import MyBasketsPanel from "./MyBasketsPanel";
 import BaseRateStats from "./BaseRateStats";
-import { LoomIcon, AssetIcon } from "./icons";
+import { AssetIcon } from "./icons";
 import type { BasketDoc } from "@/lib/firestore-types";
 
 interface Market {
@@ -530,7 +530,19 @@ export default function Dashboard() {
         {/* Header */}
         <header className="dash-header">
           <Link href="/" className="dash-brand">
-            <LoomIcon size={32} style={{ color: "#FF6B35" }} />
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+              <defs>
+                <linearGradient id="dashLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#FF6B35" />
+                  <stop offset="100%" stopColor="#00E28A" />
+                </linearGradient>
+              </defs>
+              <circle cx="18" cy="18" r="18" fill="url(#dashLogoGrad)" />
+              <path d="M18 8L11 15L18 13L25 15L18 8Z" fill="#000" />
+              <path d="M11 15L18 22V13L11 15Z" fill="#000" fillOpacity="0.4" />
+              <path d="M25 15L18 13V22L25 15Z" fill="#000" fillOpacity="0.7" />
+              <path d="M18 22L11 15L9 22L18 28L27 22L25 15L18 22Z" fill="#000" />
+            </svg>
             <span className="dash-brand-name">Basket</span>
           </Link>
 

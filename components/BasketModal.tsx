@@ -125,12 +125,23 @@ export default function BasketModal({
 
       setProgress("Verifying markets...");
       const verification = await verifyMarketsTrading(exchange, proposal.legs);
+
+      // Filter to only markets still trading
+      let legsToPlace = proposal.legs;
       if (!verification.allTrading) {
-        throw new Error(`Some markets no longer trading`);
+        // Some markets expired/locked - show which ones and continue with the rest
+        legsToPlace = proposal.legs.filter(
+          (leg) => !verification.failedMarkets.some((f) => f.includes(leg.symbol))
+        );
+        if (legsToPlace.length === 0) {
+          throw new Error(`All markets expired or locked: ${verification.failedMarkets.join(", ")}`);
+        }
+        // Update progress to show we're proceeding with fewer
+        setProgress(`${verification.failedMarkets.length} market(s) expired, placing ${legsToPlace.length} remaining...`);
       }
 
       setProgress("Placing orders...");
-      const batchResult = await placeBatchOrders(exchange, proposal.legs, (done, total, current) => {
+      const batchResult = await placeBatchOrders(exchange, legsToPlace, (done, total, current) => {
         setProgress(`Placing ${done + 1}/${total}: ${current}`);
       });
 
@@ -251,7 +262,7 @@ export default function BasketModal({
                 </select>
               </label>
 
-              {/* Time filter - prominent placement for demo */}
+              {/* Time filter */}
               <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-3">
                 <span className="text-xs font-medium text-orange-400">Expiry Window</span>
                 <p className="mb-2 text-[10px] text-white/40">Only use markets expiring within this time</p>

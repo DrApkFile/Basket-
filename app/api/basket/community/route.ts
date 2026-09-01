@@ -42,6 +42,12 @@ export async function GET() {
         const legsSnap = await getDocs(collection(db, "baskets", doc.id, "legs"));
         const legCount = legsSnap.size;
 
+        // Truncate wallet address for display
+        const creatorWallet = data.userId || "";
+        const creatorDisplay = creatorWallet
+          ? `${creatorWallet.slice(0, 6)}...${creatorWallet.slice(-4)}`
+          : "Unknown";
+
         return {
           id: doc.id,
           asset: data.asset,
@@ -50,6 +56,8 @@ export async function GET() {
           status: data.status,
           createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
           sharedAt: data.sharedAt?.toDate?.()?.toISOString() ?? null,
+          creatorWallet,
+          creatorDisplay,
         };
       })
     );
