@@ -45,6 +45,7 @@ export interface BasketDoc {
   totalSpent: number;
   maxSpend: number;
   aiReasoning: string;
+  legCount?: number; // Number of legs, stored for fast queries
   narration?: string; // Plain-language status update from AI
   updatedAt?: Timestamp;
   shared?: boolean; // If true, visible in community tab

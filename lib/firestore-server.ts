@@ -59,6 +59,7 @@ export async function createBasket(
     totalSpent: proposal.totalCost,
     maxSpend: proposal.totalCost, // actual spent
     aiReasoning: proposal.reasoning,
+    legCount: proposal.legs.length, // Store for fast queries
   };
 
   await setDoc(basketRef, basketDoc);
