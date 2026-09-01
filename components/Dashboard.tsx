@@ -43,24 +43,26 @@ export default function Dashboard() {
   const [userBaskets, setUserBaskets] = useState<UserBasket[]>([]);
   const [basketsLoading, setBasketsLoading] = useState(false);
 
-  useEffect(() => {
-    async function fetchMarkets() {
-      try {
-        setError(null);
-        const res = await fetch("/api/markets");
-        if (!res.ok) throw new Error("Failed to load markets");
-        const data = await res.json();
-        setMarkets(data.markets || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
-      } finally {
-        setLoading(false);
-      }
+  const fetchMarkets = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/markets");
+      if (!res.ok) throw new Error("Failed to load markets");
+      const data = await res.json();
+      setMarkets(data.markets || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
     fetchMarkets();
     const interval = setInterval(fetchMarkets, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchMarkets]);
 
   const fetchUserBaskets = useCallback(async () => {
     if (!address) return;
@@ -595,7 +597,43 @@ export default function Dashboard() {
 
               {/* Markets */}
               <div className="section-header">
-                <h2 className="section-title">Live Markets</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <h2 className="section-title">Live Markets</h2>
+                  <button
+                    onClick={fetchMarkets}
+                    disabled={loading}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "32px",
+                      height: "32px",
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "8px",
+                      cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.5 : 1,
+                      transition: "all 200ms",
+                    }}
+                    title="Refresh markets"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{
+                        color: "rgba(255, 255, 255, 0.6)",
+                        animation: loading ? "spin 1s linear infinite" : "none",
+                      }}
+                    >
+                      <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                      <path d="M21 3v5h-5" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="filter-pills">
                   <button
                     className={`filter-pill ${filter === "all" ? "active" : ""}`}
@@ -627,12 +665,46 @@ export default function Dashboard() {
                   <div className="empty-icon">⚠️</div>
                   <h3 className="empty-title">Failed to Load Markets</h3>
                   <p className="empty-desc">{error}</p>
+                  <button
+                    onClick={fetchMarkets}
+                    style={{
+                      marginTop: "20px",
+                      padding: "12px 28px",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: "#000",
+                      background: "linear-gradient(135deg, #FF6B35, #00E28A)",
+                      border: "none",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      transition: "all 200ms",
+                    }}
+                  >
+                    Try Again
+                  </button>
                 </div>
               ) : filteredMarkets.length === 0 ? (
                 <div className="empty-state glass">
                   <div className="empty-icon">📊</div>
                   <h3 className="empty-title">No Markets Available</h3>
                   <p className="empty-desc">Check back soon for new trading opportunities.</p>
+                  <button
+                    onClick={fetchMarkets}
+                    style={{
+                      marginTop: "20px",
+                      padding: "12px 28px",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: "#000",
+                      background: "linear-gradient(135deg, #FF6B35, #00E28A)",
+                      border: "none",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      transition: "all 200ms",
+                    }}
+                  >
+                    Refresh Markets
+                  </button>
                 </div>
               ) : (
                 <div className="market-grid">

@@ -50,6 +50,7 @@ export default function BasketModal({
   const [numWindows, setNumWindows] = useState(3);
   const [maxSpend, setMaxSpend] = useState(10);
   const [risk, setRisk] = useState<"low" | "medium" | "high">("medium");
+  const [maxExpiryMinutes, setMaxExpiryMinutes] = useState<number | null>(null);
 
   const exchangeRef = useRef(createExchange());
 
@@ -77,12 +78,13 @@ export default function BasketModal({
     setError(null);
 
     try {
-      const input: BasketConstructInput = {
+      const input: BasketConstructInput & { maxExpiryMinutes?: number } = {
         asset: crossAsset ? "BTC+ETH" : asset,
         numWindows,
         maxSpend,
         riskTolerance: risk,
         crossAsset,
+        ...(maxExpiryMinutes && { maxExpiryMinutes }),
       };
 
       const res = await fetch("/api/basket/construct", {
@@ -297,6 +299,33 @@ export default function BasketModal({
                   <option value="high">High</option>
                 </select>
               </label>
+
+              <div className="block">
+                <span className="text-xs text-white/60">Max Expiry Time (for demo)</span>
+                <p className="mb-2 text-[10px] text-white/40">Only use markets expiring within this time</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: null, label: "Any" },
+                    { value: 5, label: "5 min" },
+                    { value: 10, label: "10 min" },
+                    { value: 15, label: "15 min" },
+                    { value: 30, label: "30 min" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => setMaxExpiryMinutes(opt.value)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                        maxExpiryMinutes === opt.value
+                          ? "bg-gradient-to-r from-orange-500 to-green-500 text-black"
+                          : "border border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <button

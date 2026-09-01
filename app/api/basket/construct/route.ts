@@ -59,8 +59,8 @@ function buildLiquidityNote(market: {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as BasketConstructInput;
-    const { asset, numWindows, maxSpend, riskTolerance, crossAsset } = body;
+    const body = (await request.json()) as BasketConstructInput & { maxExpiryMinutes?: number };
+    const { asset, numWindows, maxSpend, riskTolerance, crossAsset, maxExpiryMinutes } = body;
 
     // Determine which assets to consider
     const isCrossAsset = crossAsset === true || asset === "BTC+ETH";
@@ -90,34 +90,51 @@ export async function POST(request: NextRequest) {
 
     await exchange.loadMarkets();
     const now = Math.floor(Date.now() / 1000);
-    const FIVE_MINUTES = 5 * 60;
+    const MIN_TIME_BUFFER = 2 * 60; // At least 2 minutes before expiry
 
-    // Filter to: binary, active, matching asset prefix(es), expiring > 5 min from now
+    // Calculate max expiry time based on user preference
+    const maxExpirySeconds = maxExpiryMinutes ? maxExpiryMinutes * 60 : null;
+
+    // Filter to: binary, active, matching asset prefix(es), within expiry constraints
     const liveMarkets = Object.values(exchange.markets).filter((m) => {
       if (m.type !== "binary" || !m.active) return false;
       // m.base is like "ETH-244039-25AUG26-2155", extract prefix
       const marketAsset = m.base.split("-")[0];
       if (!targetAssets.includes(marketAsset)) return false;
       const expiry = Number((m.info as BinaryMarket).expiry);
-      return expiry > now + FIVE_MINUTES;
+      const timeToExpiry = expiry - now;
+
+      // Must expire after minimum buffer
+      if (timeToExpiry < MIN_TIME_BUFFER) return false;
+
+      // If maxExpiryMinutes specified, must expire within that window
+      if (maxExpirySeconds && timeToExpiry > maxExpirySeconds) return false;
+
+      return true;
     });
 
     if (liveMarkets.length === 0) {
-      // Check what assets ARE available
+      // Check what assets ARE available (without time constraint)
       const allLive = Object.values(exchange.markets).filter((m) => {
         if (m.type !== "binary" || !m.active) return false;
         const expiry = Number((m.info as BinaryMarket).expiry);
-        return expiry > now + FIVE_MINUTES;
+        return expiry > now + MIN_TIME_BUFFER;
       });
       const availableAssets = [...new Set(allLive.map((m) => m.base.split("-")[0]))];
 
+      const timeConstraintMsg = maxExpiryMinutes
+        ? ` expiring within ${maxExpiryMinutes} minutes`
+        : "";
+
       return NextResponse.json(
         {
-          error: `No live ${assetLabel} markets available right now.`,
+          error: `No live ${assetLabel} markets${timeConstraintMsg} available right now.`,
           availableAssets,
-          hint: availableAssets.length > 0
-            ? `Try one of: ${availableAssets.join(", ")}`
-            : "No markets available at all right now."
+          hint: maxExpiryMinutes
+            ? `Try removing the time filter or selecting a longer window.`
+            : availableAssets.length > 0
+              ? `Try one of: ${availableAssets.join(", ")}`
+              : "No markets available at all right now."
         },
         { status: 404 }
       );
