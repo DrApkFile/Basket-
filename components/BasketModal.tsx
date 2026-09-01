@@ -8,6 +8,7 @@ import { placeBatchOrders, verifyMarketsTrading } from "@/lib/batch-orders";
 import type { BasketConstructInput, BasketProposal } from "@/lib/firestore-types";
 import type { BatchOrderResult } from "@/lib/batch-orders";
 import PositionCard from "./PositionCard";
+import { LoomIcon } from "./icons";
 
 type Step = "form" | "loading" | "proposal" | "placing" | "done" | "error";
 
@@ -311,7 +312,9 @@ export default function BasketModal({
         {/* Step: Loading */}
         {step === "loading" && (
           <div className="py-12 text-center">
-            <div className="text-3xl">🤖</div>
+            <div className="mx-auto flex h-16 w-16 items-center justify-center">
+              <LoomIcon size={48} active />
+            </div>
             <p className="mt-4 text-sm text-white/60">AI is analyzing markets...</p>
             <div className="mx-auto mt-4 h-1 w-48 overflow-hidden rounded-full bg-white/10">
               <div className="h-full w-1/2 animate-pulse rounded-full bg-gradient-to-r from-orange-500 to-green-500" />

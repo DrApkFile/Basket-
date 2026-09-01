@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import BasketDetail from "./BasketDetail";
+import { AssetIcon } from "./icons";
 import type { BasketDoc } from "@/lib/firestore-types";
 
 interface UserBasket extends BasketDoc {
@@ -74,8 +75,8 @@ export default function MyBasketsPanel({ baskets, loading, onRefresh }: MyBasket
                 {/* Top Row */}
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500/20 to-green-500/10 text-sm font-bold">
-                      {basket.asset === "BTC" ? "₿" : basket.asset === "ETH" ? "Ξ" : "⚡"}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500/20 to-green-500/10">
+                      <AssetIcon asset={basket.asset} size={20} />
                     </div>
                     <span className="font-semibold">{basket.asset}</span>
                     <span

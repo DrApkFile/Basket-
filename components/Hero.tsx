@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { LoomIcon } from "./icons";
 
 export default function Hero() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -715,19 +716,7 @@ export default function Hero() {
         {/* Header */}
         <header className="header">
           <Link href="/" className="brand">
-            <svg className="brand-logo" viewBox="0 0 36 36" fill="none">
-              <defs>
-                <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#FF6B35" />
-                  <stop offset="100%" stopColor="#00E28A" />
-                </linearGradient>
-              </defs>
-              <circle cx="18" cy="18" r="18" fill="url(#logoGrad)" />
-              <path d="M18 8L11 15L18 13L25 15L18 8Z" fill="#000" />
-              <path d="M11 15L18 22V13L11 15Z" fill="#000" fillOpacity="0.4" />
-              <path d="M25 15L18 13V22L25 15Z" fill="#000" fillOpacity="0.7" />
-              <path d="M18 22L11 15L9 22L18 28L27 22L25 15L18 22Z" fill="#000" />
-            </svg>
+            <LoomIcon size={36} style={{ color: "#FF6B35" }} />
             <span className="brand-name">Basket</span>
           </Link>
 
@@ -980,19 +969,7 @@ export default function Hero() {
         <footer className="footer">
           <div className="footer-content">
             <div className="footer-brand">
-              <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-                <defs>
-                  <linearGradient id="footerLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#FF6B35" />
-                    <stop offset="100%" stopColor="#00E28A" />
-                  </linearGradient>
-                </defs>
-                <circle cx="18" cy="18" r="18" fill="url(#footerLogoGrad)" />
-                <path d="M18 8L11 15L18 13L25 15L18 8Z" fill="#000" />
-                <path d="M11 15L18 22V13L11 15Z" fill="#000" fillOpacity="0.4" />
-                <path d="M25 15L18 13V22L25 15Z" fill="#000" fillOpacity="0.7" />
-                <path d="M18 22L11 15L9 22L18 28L27 22L25 15L18 22Z" fill="#000" />
-              </svg>
+              <LoomIcon size={28} style={{ color: "#FF6B35" }} />
               <span className="footer-brand-name">Basket</span>
             </div>
 

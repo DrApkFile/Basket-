@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { createExchange } from "@/lib/somnia";
 import type { BasketDoc, LegDoc } from "@/lib/firestore-types";
 import PositionCard from "./PositionCard";
+import { AssetIcon, LoomIcon } from "./icons";
 
 interface BasketDetailProps {
   basketId: string;
@@ -247,8 +248,8 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-green-500/10 text-lg font-bold">
-            {basket.asset === "BTC" ? "₿" : basket.asset === "ETH" ? "Ξ" : "⚡"}
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-green-500/10">
+            <AssetIcon asset={basket.asset} size={24} />
           </div>
           <div>
             <h3 className="font-semibold">{basket.asset} Basket</h3>
@@ -311,7 +312,8 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       {/* AI Narration */}
       {basket.narration && (
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-orange-400">
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-orange-400">
+            <LoomIcon size={14} style={{ color: "#F97316" }} />
             AI Monitor
           </div>
           <p className="text-sm leading-relaxed text-white/70">{basket.narration}</p>

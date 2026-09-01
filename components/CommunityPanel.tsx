@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { AssetIcon } from "./icons";
 
 interface CommunityBasket {
   id: string;
@@ -83,8 +84,8 @@ export default function CommunityPanel() {
                 {/* Header */}
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-green-500/10 text-lg font-bold">
-                      {basket.asset === "BTC" ? "₿" : basket.asset === "ETH" ? "Ξ" : "⚡"}
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-green-500/10">
+                      <AssetIcon asset={basket.asset} size={24} />
                     </div>
                     <span className="font-semibold">{basket.asset}</span>
                   </div>
