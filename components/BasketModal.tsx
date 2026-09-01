@@ -251,6 +251,34 @@ export default function BasketModal({
                 </select>
               </label>
 
+              {/* Time filter - prominent placement for demo */}
+              <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-3">
+                <span className="text-xs font-medium text-orange-400">Expiry Window</span>
+                <p className="mb-2 text-[10px] text-white/40">Only use markets expiring within this time</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: null, label: "Any" },
+                    { value: 5, label: "5 min" },
+                    { value: 10, label: "10 min" },
+                    { value: 15, label: "15 min" },
+                    { value: 30, label: "30 min" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => setMaxExpiryMinutes(opt.value)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                        maxExpiryMinutes === opt.value
+                          ? "bg-gradient-to-r from-orange-500 to-green-500 text-black"
+                          : "border border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <label className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
                 <input
                   type="checkbox"
@@ -300,32 +328,6 @@ export default function BasketModal({
                 </select>
               </label>
 
-              <div className="block">
-                <span className="text-xs text-white/60">Max Expiry Time (for demo)</span>
-                <p className="mb-2 text-[10px] text-white/40">Only use markets expiring within this time</p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: null, label: "Any" },
-                    { value: 5, label: "5 min" },
-                    { value: 10, label: "10 min" },
-                    { value: 15, label: "15 min" },
-                    { value: 30, label: "30 min" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.label}
-                      type="button"
-                      onClick={() => setMaxExpiryMinutes(opt.value)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                        maxExpiryMinutes === opt.value
-                          ? "bg-gradient-to-r from-orange-500 to-green-500 text-black"
-                          : "border border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             <button
