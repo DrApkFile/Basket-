@@ -175,19 +175,37 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       const errors: string[] = [];
 
       // Build entries for batch redemption
-      // outcomeIdx: 0 = YES, 1 = NO (SDK convention)
-      const entries = redeemableLegs.map((leg) => ({
-        marketId: leg.marketId as `0x${string}`,
-        outcomeIdx: (leg.side === "YES" ? 0 : 1) as 0 | 1,
-        amount: BigInt(Math.floor(leg.filled * 1e6)), // Convert to raw units (6 decimals for USDC)
-      }));
+      // SDK outcomeIdx: 0 = YES, 1 = NO (opposite of winningOutcome convention)
+      // Amount must be in raw units (6 decimals for tUSDC)
+      const entries = redeemableLegs.map((leg) => {
+        // leg.side is "YES" or "NO" from our API
+        const outcomeIdx = leg.side === "YES" ? 0 : 1;
+        // filled is number of contracts, convert to raw units (1 contract = 1 USDC = 1e6 raw)
+        const rawAmount = BigInt(Math.round(leg.filled * 1_000_000));
 
-      console.log("Redeem entries:", entries);
+        console.log(`Entry: marketId=${leg.marketId}, side=${leg.side}, outcomeIdx=${outcomeIdx}, filled=${leg.filled}, rawAmount=${rawAmount}`);
+
+        return {
+          marketId: leg.marketId as `0x${string}`,
+          outcomeIdx: outcomeIdx as 0 | 1,
+          amount: rawAmount,
+        };
+      });
+
+      // Filter out any entries with 0 amount
+      const validEntries = entries.filter(e => e.amount > BigInt(0));
+      if (validEntries.length === 0) {
+        setRedeemProgress("No valid amounts to redeem (all zero)");
+        setTimeout(() => setRedeeming(false), 3000);
+        return;
+      }
+
+      console.log("Redeem entries:", validEntries);
       setRedeemProgress(`Signing redemption transaction...`);
 
       try {
         // Batch redeem all legs in one transaction
-        const result = await exchange.trader.redeemMany({ entries });
+        const result = await exchange.trader.redeemMany({ entries: validEntries });
         console.log("Redeem result:", result);
 
         const txHash = result.hash ?? "";
