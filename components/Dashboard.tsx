@@ -9,6 +9,7 @@ import BasketModal from "./BasketModal";
 import CommunityPanel from "./CommunityPanel";
 import MyBasketsPanel from "./MyBasketsPanel";
 import BaseRateStats from "./BaseRateStats";
+import BalanceDisplay from "./BalanceDisplay";
 import { AssetIcon } from "./icons";
 import type { BasketDoc } from "@/lib/firestore-types";
 
@@ -580,6 +581,7 @@ export default function Dashboard() {
               </svg>
               Create Basket
             </button>
+            <BalanceDisplay />
             <ConnectButton />
           </div>
         </header>

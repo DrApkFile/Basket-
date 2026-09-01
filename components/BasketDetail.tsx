@@ -82,12 +82,12 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
   }, [basketId]);
 
   // Fetch narration (poll for updates)
-  const fetchNarration = useCallback(async () => {
+  const fetchNarration = useCallback(async (skipNarration = false) => {
     try {
       const res = await fetch("/api/basket/narrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ basketId }),
+        body: JSON.stringify({ basketId, skipNarration }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -100,13 +100,13 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
 
   // Initial fetch and polling for status updates
   useEffect(() => {
-    fetchNarration();
+    // Initial fetch with full narration
+    fetchNarration(false);
 
-    // Poll every 10 seconds for faster state updates
-    // Poll regardless of pending count to catch state changes quickly
+    // Poll every 5 seconds for faster state updates (skip narration for speed)
     const interval = setInterval(() => {
-      fetchNarration();
-    }, 10000);
+      fetchNarration(true); // Skip AI narration for faster polling
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [fetchNarration]);
@@ -167,35 +167,43 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       // Create exchange with wallet for redemption
       const exchange = createExchange();
       exchange.setSigner({ walletClient });
-      await exchange.loadMarkets();
+
+      // NOTE: We use trader.redeemMany() directly instead of exchange.redeem()
+      // because settled markets are removed from loadMarkets() registry (documented gotcha)
 
       const redemptions: Array<{ marketId: string; txHash: string; outcome: "won" | "voided" }> = [];
       const errors: string[] = [];
 
-      // Redeem each leg using unified API
-      for (let i = 0; i < redeemableLegs.length; i++) {
-        const leg = redeemableLegs[i];
-        setRedeemProgress(`Redeeming ${i + 1}/${redeemableLegs.length}: ${leg.symbol}...`);
+      // Build entries for batch redemption
+      // outcomeIdx: 0 = YES, 1 = NO (SDK convention)
+      const entries = redeemableLegs.map((leg) => ({
+        marketId: leg.marketId as `0x${string}`,
+        outcomeIdx: (leg.side === "YES" ? 0 : 1) as 0 | 1,
+        amount: BigInt(Math.floor(leg.filled * 1e6)), // Convert to raw units (6 decimals for USDC)
+      }));
 
-        try {
-          // Construct full symbol for redemption
-          const fullSymbol = `${leg.symbol}#${leg.side}`;
-          console.log(`Redeeming ${fullSymbol}, quantity: ${leg.filled}`);
+      console.log("Redeem entries:", entries);
+      setRedeemProgress(`Signing redemption transaction...`);
 
-          // Use exchange.redeem() which handles outcome resolution automatically
-          const result = await exchange.redeem(fullSymbol, leg.filled);
-          console.log(`Redeem result for ${fullSymbol}:`, result);
+      try {
+        // Batch redeem all legs in one transaction
+        const result = await exchange.trader.redeemMany({ entries });
+        console.log("Redeem result:", result);
 
+        const txHash = result.hash ?? "";
+
+        // Mark all as redeemed
+        for (const leg of redeemableLegs) {
           redemptions.push({
             marketId: leg.marketId,
-            txHash: result.hash ?? "",
+            txHash,
             outcome: leg.estimatedPayout === leg.filled ? "won" : "voided",
           });
-        } catch (err) {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          console.error(`Failed to redeem ${leg.symbol}:`, err);
-          errors.push(`${leg.symbol}: ${errMsg}`);
         }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error("Batch redeem failed:", err);
+        errors.push(errMsg);
       }
 
       // Record redemptions in Firestore
@@ -347,39 +355,51 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       )}
 
       {/* Summary Stats */}
-      {narration?.summary && (
-        <div className="mt-4 grid grid-cols-4 gap-3">
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
-            <div className="text-[10px] text-white/40">Wins</div>
-            <div className="mt-1 font-mono text-lg font-semibold text-green-400">{narration.summary.wins}</div>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
-            <div className="text-[10px] text-white/40">Losses</div>
-            <div className="mt-1 font-mono text-lg font-semibold text-red-400">{narration.summary.losses}</div>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
-            <div className="text-[10px] text-white/40">Pending</div>
-            <div className="mt-1 font-mono text-lg font-semibold text-yellow-400">{narration.summary.pending}</div>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
-            <div className="text-[10px] text-white/40">Net P&L</div>
-            <div
-              className={`mt-1 font-mono text-lg font-semibold ${
-                narration.summary.netPnL >= 0 ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              {narration.summary.netPnL >= 0 ? "+" : ""}${narration.summary.netPnL.toFixed(2)}
+      <div className="mt-4 grid grid-cols-4 gap-3">
+        {narration?.summary ? (
+          <>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+              <div className="text-[10px] text-white/40">Wins</div>
+              <div className="mt-1 font-mono text-lg font-semibold text-green-400">{narration.summary.wins}</div>
             </div>
-          </div>
-        </div>
-      )}
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+              <div className="text-[10px] text-white/40">Losses</div>
+              <div className="mt-1 font-mono text-lg font-semibold text-red-400">{narration.summary.losses}</div>
+            </div>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+              <div className="text-[10px] text-white/40">Pending</div>
+              <div className="mt-1 font-mono text-lg font-semibold text-yellow-400">{narration.summary.pending}</div>
+            </div>
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+              <div className="text-[10px] text-white/40">Net P&L</div>
+              <div
+                className={`mt-1 font-mono text-lg font-semibold ${
+                  narration.summary.netPnL >= 0 ? "text-green-400" : "text-red-400"
+                }`}
+              >
+                {narration.summary.netPnL >= 0 ? "+" : ""}${narration.summary.netPnL.toFixed(2)}
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Loading skeleton */
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center animate-pulse">
+                <div className="h-3 w-10 mx-auto bg-white/10 rounded" />
+                <div className="mt-2 h-6 w-8 mx-auto bg-white/10 rounded" />
+              </div>
+            ))}
+          </>
+        )}
+      </div>
 
       {/* Legs - Plain language */}
-      {narration?.legs && (
-        <div className="mt-4">
-          <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">
-            Positions
-          </div>
+      <div className="mt-4">
+        <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+          Positions
+        </div>
+        {narration?.legs ? (
           <ul className="space-y-2">
             {narration.legs.map((leg) => (
               <li key={leg.marketId}>
@@ -402,8 +422,26 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        ) : (
+          /* Loading skeleton for positions */
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl border border-white/5 bg-white/[0.02] p-4 animate-pulse">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 bg-white/10 rounded-lg" />
+                    <div>
+                      <div className="h-4 w-32 bg-white/10 rounded" />
+                      <div className="mt-1 h-3 w-20 bg-white/5 rounded" />
+                    </div>
+                  </div>
+                  <div className="h-6 w-16 bg-white/10 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Redeem Button */}
       {canRedeem && !redeeming && (

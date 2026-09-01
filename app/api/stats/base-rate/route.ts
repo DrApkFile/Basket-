@@ -2,8 +2,8 @@
  * GET /api/stats/base-rate
  *
  * Returns historical settlement rates for BTC and ETH markets.
- * Queries finalized markets from the venue and computes Up vs Down win rates.
- * Results are cached for 15 minutes to avoid hammering the indexer.
+ * Uses parallel requests and limits sample size for speed.
+ * Results are cached for 15 minutes.
  */
 
 import { NextResponse } from "next/server";
@@ -12,6 +12,8 @@ import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 
 const INDEXER_URL = "https://dev.smk.somnia.host/v1/graphql";
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_MARKETS_TO_CHECK = 30; // Limit for speed
+const REQUEST_TIMEOUT_MS = 5000; // 5 second timeout per request
 
 interface AssetStats {
   asset: string;
@@ -29,6 +31,29 @@ interface CachedStats {
 
 let cache: CachedStats | null = null;
 
+async function checkMarketWithTimeout(
+  exchange: SomniaMarkets,
+  marketId: string,
+  timeoutMs: number
+): Promise<{ status: number; winningOutcome: number } | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    const onchain = await Promise.race([
+      exchange.client.getMarketOnchain(marketId as `0x${string}`),
+      new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), timeoutMs)
+      ),
+    ]);
+
+    clearTimeout(timeout);
+    return onchain;
+  } catch {
+    return null;
+  }
+}
+
 async function computeBaseRates(): Promise<AssetStats[]> {
   const exchange = new SomniaMarkets({
     indexerUrl: INDEXER_URL,
@@ -41,43 +66,45 @@ async function computeBaseRates(): Promise<AssetStats[]> {
   const results: AssetStats[] = [];
 
   for (const asset of ["BTC", "ETH"]) {
-    let sampleSize = 0;
-    let voidedCount = 0;
-    let upWins = 0;
-    let downWins = 0;
-
-    // Get all markets and filter to finalized ones for this asset
-    const allMarkets = Object.values(exchange.markets).filter((m) => {
+    // Get binary markets for this asset
+    const assetMarkets = Object.values(exchange.markets).filter((m) => {
       if (m.type !== "binary") return false;
       const marketAsset = m.base.split("-")[0];
       return marketAsset === asset;
     });
 
-    // Check on-chain status for each market (limit to avoid too many RPC calls)
-    const marketsToCheck = allMarkets.slice(0, 200);
+    // Take a sample of markets to check (limit for speed)
+    const marketsToCheck = assetMarkets.slice(0, MAX_MARKETS_TO_CHECK);
 
-    for (const market of marketsToCheck) {
-      try {
-        const onchain = await exchange.client.getMarketOnchain(market.id as `0x${string}`);
+    // Check all markets in parallel for speed
+    const onchainResults = await Promise.all(
+      marketsToCheck.map((m) =>
+        checkMarketWithTimeout(exchange, m.id, REQUEST_TIMEOUT_MS)
+      )
+    );
 
-        // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
-        if (onchain.status === 4 || onchain.status === 5) {
-          sampleSize++;
+    let sampleSize = 0;
+    let voidedCount = 0;
+    let upWins = 0;
+    let downWins = 0;
 
-          if (onchain.status === 5) {
-            voidedCount++;
-          } else if (onchain.status === 4) {
-            // Resolved - check winning outcome
-            // winningOutcome: 0 = Down/NO won, 1 = Up/YES won
-            if (onchain.winningOutcome === 1) {
-              upWins++;
-            } else {
-              downWins++;
-            }
+    for (const onchain of onchainResults) {
+      if (!onchain) continue;
+
+      // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
+      if (onchain.status === 4 || onchain.status === 5) {
+        sampleSize++;
+
+        if (onchain.status === 5) {
+          voidedCount++;
+        } else if (onchain.status === 4) {
+          // winningOutcome: 0 = Down/NO won, 1 = Up/YES won
+          if (onchain.winningOutcome === 1) {
+            upWins++;
+          } else {
+            downWins++;
           }
         }
-      } catch {
-        // Skip markets we can't query
       }
     }
 
@@ -111,8 +138,25 @@ export async function GET() {
       });
     }
 
-    // Compute fresh stats
-    const stats = await computeBaseRates();
+    // Compute fresh stats with overall timeout
+    const statsPromise = computeBaseRates();
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), 15000) // 15 second overall timeout
+    );
+
+    const stats = await Promise.race([statsPromise, timeoutPromise]);
+
+    if (!stats) {
+      // Timed out - return cached if available, otherwise empty
+      if (cache) {
+        return NextResponse.json({
+          stats: cache.stats,
+          cached: true,
+          stale: true,
+        });
+      }
+      return NextResponse.json({ stats: [], error: "Timeout computing stats" });
+    }
 
     // Update cache
     cache = {
@@ -127,13 +171,12 @@ export async function GET() {
   } catch (err) {
     console.error("Base rate stats error:", err);
 
-    // Return cached data even if stale, if available
+    // Return cached data even if stale
     if (cache) {
       return NextResponse.json({
         stats: cache.stats,
         cached: true,
         stale: true,
-        error: "Using stale cache due to fetch error",
       });
     }
 

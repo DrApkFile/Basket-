@@ -1,71 +1,66 @@
 /**
  * POST /api/basket/narrate
  *
- * AI monitor that produces plain-language status updates for a basket.
- * Server reads current on-chain leg statuses, calculates win/loss/payout,
- * then calls Gemini to narrate honestly (losses included).
+ * Fast status check for a basket with optional AI narration.
+ * Uses parallel RPC calls for speed.
  *
- * SECURITY: On-chain status is source of truth. Firestore is only a cache
- * updated AFTER on-chain verification via getMarketOnchain().
+ * SECURITY: On-chain status is source of truth.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getBasket, getBasketLegsWithStatus, updateBasketStatus, markLegRedeemed } from "@/lib/firestore-server";
+import { getBasket, updateBasketStatus } from "@/lib/firestore-server";
 import { ONCHAIN_STATUS_LABELS, type LegDoc } from "@/lib/firestore-types";
 import { SomniaMarkets, SOMNIA_TESTNET_ADDRESSES } from "@somnia-chain/markets-sdk";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
+import { collection, getDocs, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const INDEXER_URL = "https://dev.smk.somnia.host/v1/graphql";
+const RPC_TIMEOUT_MS = 3000; // 3 second timeout per RPC call
 
 interface LegWithOutcome extends LegDoc {
   resolvedOutcome: "won" | "lost" | "voided" | "pending";
   payout: number;
 }
 
-/**
- * Determine if a leg won/lost based on on-chain resolution data.
- * MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
- */
-async function checkLegOutcome(
+async function checkLegOnchain(
   exchange: SomniaMarkets,
   leg: LegDoc
-): Promise<{ outcome: "won" | "lost" | "voided" | "pending"; payout: number }> {
+): Promise<{ status: number; winningOutcome: number; outcome: "won" | "lost" | "voided" | "pending"; payout: number } | null> {
   try {
-    const onchain = await exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
+    const onchainPromise = exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), RPC_TIMEOUT_MS)
+    );
 
+    const onchain = await Promise.race([onchainPromise, timeoutPromise]);
+    if (!onchain) return null;
+
+    let outcome: "won" | "lost" | "voided" | "pending" = "pending";
+    let payout = 0;
+
+    // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
     if (onchain.status === 5) {
-      // Voided — both sides redeem at 0.5
-      return { outcome: "voided", payout: leg.filled * 0.5 };
-    }
-
-    if (onchain.status === 4) {
-      // Resolved — check winning outcome
+      outcome = "voided";
+      payout = leg.filled * 0.5;
+    } else if (onchain.status === 4) {
       // winningOutcome: 0 = DOWN/NO, 1 = UP/YES
-      const winningOutcome = onchain.winningOutcome;
       const legIsYes = leg.side === "YES";
-      const won = (winningOutcome === 1 && legIsYes) || (winningOutcome === 0 && !legIsYes);
-
-      if (won) {
-        // Winner gets $1 per contract
-        return { outcome: "won", payout: leg.filled };
-      } else {
-        // Loser gets $0
-        return { outcome: "lost", payout: 0 };
-      }
+      const won = (onchain.winningOutcome === 1 && legIsYes) || (onchain.winningOutcome === 0 && !legIsYes);
+      outcome = won ? "won" : "lost";
+      payout = won ? leg.filled : 0;
     }
 
-    // Not yet resolved (Listed=0, Trading=1, Locked=2, Settling=3)
-    return { outcome: "pending", payout: 0 };
+    return { status: onchain.status, winningOutcome: onchain.winningOutcome, outcome, payout };
   } catch {
-    // Market might be finalized/removed from registry
-    return { outcome: "pending", payout: 0 };
+    return null;
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { basketId } = (await request.json()) as { basketId: string };
+    const { basketId, skipNarration } = (await request.json()) as { basketId: string; skipNarration?: boolean };
 
     if (!basketId) {
       return NextResponse.json({ error: "basketId required" }, { status: 400 });
@@ -77,8 +72,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Basket not found" }, { status: 404 });
     }
 
-    // Get legs with refreshed on-chain status
-    const legs = await getBasketLegsWithStatus(basketId);
+    // Get legs directly from Firestore (faster than getBasketLegsWithStatus)
+    const legsSnap = await getDocs(collection(db, "baskets", basketId, "legs"));
+    const legs = legsSnap.docs.map((d) => d.data() as LegDoc);
+
     if (legs.length === 0) {
       return NextResponse.json({ error: "No legs found" }, { status: 404 });
     }
@@ -90,19 +87,41 @@ export async function POST(request: NextRequest) {
       addresses: SOMNIA_TESTNET_ADDRESSES,
     });
 
-    // Check each leg's outcome
-    const legsWithOutcomes: LegWithOutcome[] = [];
-    for (const leg of legs) {
-      const { outcome, payout } = await checkLegOutcome(exchange, leg);
-      legsWithOutcomes.push({
+    // Check ALL legs in PARALLEL for speed
+    const onchainResults = await Promise.all(
+      legs.map((leg) => checkLegOnchain(exchange, leg))
+    );
+
+    // Combine results
+    const legsWithOutcomes: LegWithOutcome[] = legs.map((leg, i) => {
+      const result = onchainResults[i];
+      if (result) {
+        return {
+          ...leg,
+          onchainStatus: result.status,
+          resolvedOutcome: result.outcome,
+          payout: result.payout,
+        };
+      }
+      // Fallback to cached status
+      return {
         ...leg,
-        resolvedOutcome: outcome,
-        payout,
-      });
-    }
+        resolvedOutcome: "pending" as const,
+        payout: 0,
+      };
+    });
+
+    // Update Firestore with new statuses (in parallel, fire-and-forget)
+    const updates = legsWithOutcomes
+      .filter((leg, i) => onchainResults[i] && onchainResults[i]!.status !== legs[i].onchainStatus)
+      .map((leg) =>
+        updateDoc(legsSnap.docs.find((d) => d.data().marketId === leg.marketId)!.ref, {
+          onchainStatus: leg.onchainStatus,
+        }).catch(() => {})
+      );
+    Promise.all(updates); // Don't await - fire and forget
 
     // Calculate summary stats
-    // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
     const tradingCount = legsWithOutcomes.filter((l) => l.onchainStatus === 1).length;
     const lockedCount = legsWithOutcomes.filter((l) => l.onchainStatus === 2 || l.onchainStatus === 3).length;
     const resolvedCount = legsWithOutcomes.filter((l) => l.onchainStatus === 4).length;
@@ -127,78 +146,60 @@ export async function POST(request: NextRequest) {
       ? Math.max(0, Math.round((nextExpiry - Date.now() / 1000) / 60))
       : null;
 
-    // Build leg summaries for Gemini
-    const legSummaries = legsWithOutcomes.map((leg) => ({
-      symbol: leg.symbol,
-      side: leg.side,
-      quantity: leg.quantity,
-      filled: leg.filled,
-      cost: leg.cost,
-      status: ONCHAIN_STATUS_LABELS[leg.onchainStatus] ?? `Unknown(${leg.onchainStatus})`,
-      outcome: leg.resolvedOutcome,
-      payout: leg.payout,
-      expiresIn: leg.expiry > Date.now() / 1000
-        ? `${Math.round((leg.expiry - Date.now() / 1000) / 60)}m`
-        : "expired",
-    }));
-
-    // Call Gemini for narration
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-
-    const prompt = `You are narrating the status of a prediction market basket to a user.
-Keep it SHORT (2-3 sentences max), honest, and informative.
-IMPORTANT: Report losses plainly — do NOT sugarcoat or hide bad news.
-
-BASKET STATUS:
-- Asset: ${basket.asset}
-- Total legs: ${legs.length}
-- Trading: ${tradingCount}
-- Locked (awaiting settlement): ${lockedCount}
-- Resolved: ${resolvedCount}
-- Voided: ${voidedCount}
-
-OUTCOMES:
-- Wins: ${wins}
-- Losses: ${losses}
-- Voided: ${voided}
-- Pending: ${pending}
-
-FINANCIALS:
-- Total cost: $${totalCost.toFixed(2)}
-- Total payout so far: $${totalPayout.toFixed(2)}
-- Net P&L: ${netPnL >= 0 ? "+" : ""}$${netPnL.toFixed(2)}
-${minutesToNextExpiry !== null ? `- Next pending leg expires in: ${minutesToNextExpiry} minutes` : ""}
-
-INDIVIDUAL LEGS:
-${legSummaries.map((l) => `- ${l.symbol} ${l.side}: ${l.outcome.toUpperCase()}, filled ${l.filled}, payout $${l.payout.toFixed(2)}`).join("\n")}
-
-${
-  settledCount === legs.length
-    ? "All legs have settled! Tell the user they can redeem their winnings now."
-    : pending > 0
-      ? `${pending} leg(s) still pending.`
-      : ""
-}
-
-Write a brief, natural, HONEST status update. Include specific numbers.`;
-
-    const result = await model.generateContent(prompt);
-    const narration = result.response.text().trim();
-
     // Determine new basket status
     let newStatus = basket.status;
     if (settledCount === legs.length && basket.status !== "redeemed") {
       newStatus = "settled";
+    } else if (basket.status === "pending" && tradingCount > 0) {
+      newStatus = "active";
     }
 
-    // Update basket with new narration
-    await updateBasketStatus(basketId, newStatus, narration);
+    // Generate narration (skip if requested for speed, or use simple template)
+    let narration = basket.narration || "";
+
+    if (!skipNarration && (newStatus !== basket.status || !narration)) {
+      // Try Gemini, but fall back to simple template if it fails
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      if (apiKey && settledCount > 0) {
+        try {
+          const genAI = new GoogleGenerativeAI(apiKey);
+          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+          const prompt = `Narrate this prediction market basket status in 1-2 sentences. Be direct about wins and losses.
+Asset: ${basket.asset} | Legs: ${legs.length} | Wins: ${wins} | Losses: ${losses} | Voided: ${voided} | Pending: ${pending}
+Cost: $${totalCost.toFixed(2)} | Payout: $${totalPayout.toFixed(2)} | Net: ${netPnL >= 0 ? "+" : ""}$${netPnL.toFixed(2)}
+${settledCount === legs.length ? "All legs settled - ready to redeem." : pending > 0 ? `${pending} leg(s) still pending.` : ""}`;
+
+          const result = await Promise.race([
+            model.generateContent(prompt),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+          ]);
+
+          if (result) {
+            narration = result.response.text().trim();
+          }
+        } catch {
+          // Fall through to simple template
+        }
+      }
+
+      // Simple template fallback
+      if (!narration) {
+        if (settledCount === legs.length) {
+          narration = `All ${legs.length} positions settled. ${wins} won, ${losses} lost${voided > 0 ? `, ${voided} voided` : ""}. Net: ${netPnL >= 0 ? "+" : ""}$${netPnL.toFixed(2)}. Ready to redeem.`;
+        } else if (pending > 0) {
+          narration = `${pending} of ${legs.length} positions still pending. ${wins} won so far.${minutesToNextExpiry ? ` Next settles in ~${minutesToNextExpiry}m.` : ""}`;
+        } else {
+          narration = `${tradingCount} trading, ${lockedCount} locked. Waiting for settlement.`;
+        }
+      }
+    }
+
+    // Update basket status if changed
+    if (newStatus !== basket.status || narration !== basket.narration) {
+      await updateBasketStatus(basketId, newStatus, narration);
+    }
 
     return NextResponse.json({
       basketId,
@@ -223,7 +224,7 @@ Write a brief, natural, HONEST status update. Include specific numbers.`;
         marketId: l.marketId,
         symbol: l.symbol,
         side: l.side,
-        price: l.price, // Original price at time of order (for display)
+        price: l.price,
         filled: l.filled,
         cost: l.cost,
         interval: l.interval,
