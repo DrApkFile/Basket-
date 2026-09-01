@@ -8,6 +8,7 @@ import MarketDetailModal from "./MarketDetailModal";
 import BasketModal from "./BasketModal";
 import CommunityPanel from "./CommunityPanel";
 import MyBasketsPanel from "./MyBasketsPanel";
+import BaseRateStats from "./BaseRateStats";
 import { LoomIcon, AssetIcon } from "./icons";
 import type { BasketDoc } from "@/lib/firestore-types";
 
@@ -593,6 +594,11 @@ export default function Dashboard() {
                     {userBaskets.reduce((sum, b) => sum + b.pendingCount, 0)}
                   </div>
                 </div>
+              </div>
+
+              {/* Historical base rates */}
+              <div style={{ marginBottom: "24px" }}>
+                <BaseRateStats />
               </div>
 
               {/* Markets */}
