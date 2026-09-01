@@ -113,45 +113,64 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
 
   // Handle batch redemption
   async function handleRedeem() {
-    if (!walletClient || !basket) return;
+    if (!walletClient || !basket) {
+      console.error("handleRedeem: missing walletClient or basket");
+      return;
+    }
+
+    if (!address) {
+      console.error("handleRedeem: no wallet address");
+      return;
+    }
 
     setRedeeming(true);
     setRedeemProgress("Checking redeemable legs...");
 
     try {
-      // Get redeemable legs from server
+      // Get redeemable legs from server - use connected address, not basket.userId
       const res = await fetch("/api/basket/redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           basketId,
-          walletAddress: basket.userId,
+          walletAddress: address,
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || "Failed to get redeemable legs");
       }
 
-      const { redeemableLegs, totalEstimatedPayout } = (await res.json()) as {
+      // Handle case where API returns message instead of redeemableLegs
+      if (data.message === "No legs to redeem" || data.redeemed === 0) {
+        setRedeemProgress("No legs to redeem - may already be redeemed");
+        setTimeout(() => setRedeeming(false), 3000);
+        return;
+      }
+
+      const { redeemableLegs, totalEstimatedPayout } = data as {
         redeemableLegs: RedeemableLeg[];
         totalEstimatedPayout: number;
       };
 
-      if (redeemableLegs.length === 0) {
-        setRedeemProgress("No legs to redeem");
-        setTimeout(() => setRedeeming(false), 2000);
+      if (!redeemableLegs || redeemableLegs.length === 0) {
+        setRedeemProgress("No redeemable legs found");
+        setTimeout(() => setRedeeming(false), 3000);
         return;
       }
 
+      console.log("Redeemable legs:", redeemableLegs);
       setRedeemProgress(`Redeeming ${redeemableLegs.length} legs (~$${totalEstimatedPayout.toFixed(2)})...`);
 
       // Create exchange with wallet for redemption
       const exchange = createExchange();
       exchange.setSigner({ walletClient });
+      await exchange.loadMarkets();
 
       const redemptions: Array<{ marketId: string; txHash: string; outcome: "won" | "voided" }> = [];
+      const errors: string[] = [];
 
       // Redeem each leg using unified API
       for (let i = 0; i < redeemableLegs.length; i++) {
@@ -161,9 +180,11 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
         try {
           // Construct full symbol for redemption
           const fullSymbol = `${leg.symbol}#${leg.side}`;
+          console.log(`Redeeming ${fullSymbol}, quantity: ${leg.filled}`);
 
           // Use exchange.redeem() which handles outcome resolution automatically
           const result = await exchange.redeem(fullSymbol, leg.filled);
+          console.log(`Redeem result for ${fullSymbol}:`, result);
 
           redemptions.push({
             marketId: leg.marketId,
@@ -171,7 +192,9 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
             outcome: leg.estimatedPayout === leg.filled ? "won" : "voided",
           });
         } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
           console.error(`Failed to redeem ${leg.symbol}:`, err);
+          errors.push(`${leg.symbol}: ${errMsg}`);
         }
       }
 
@@ -183,15 +206,19 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ basketId, redemptions }),
         });
+        setRedeemProgress(`Redeemed ${redemptions.length} legs!`);
+      } else if (errors.length > 0) {
+        setRedeemProgress(`Failed: ${errors[0]}`);
+      } else {
+        setRedeemProgress("No redemptions completed");
       }
 
-      setRedeemProgress(`Redeemed ${redemptions.length} legs!`);
       await fetchNarration(); // Refresh status
     } catch (err) {
       console.error("Redeem error:", err);
       setRedeemProgress(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
-      setTimeout(() => setRedeeming(false), 3000);
+      setTimeout(() => setRedeeming(false), 4000);
     }
   }
 
@@ -384,8 +411,17 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
           onClick={handleRedeem}
           className="mt-5 w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-green-500/25 transition-all hover:-translate-y-0.5 hover:shadow-green-500/40"
         >
-          Redeem Winning Legs
+          Redeem Positions
         </button>
+      )}
+
+      {/* Debug: Show redeemable count */}
+      {narration?.legs && (
+        <p className="mt-2 text-center text-[10px] text-white/30">
+          {narration.legs.filter(l => l.redeemable).length} redeemable ·
+          {narration.legs.filter(l => l.outcome === "won").length} won ·
+          {narration.legs.filter(l => l.outcome === "voided").length} voided
+        </p>
       )}
 
       {redeeming && (

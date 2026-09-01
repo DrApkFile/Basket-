@@ -60,13 +60,13 @@ async function computeBaseRates(): Promise<AssetStats[]> {
       try {
         const onchain = await exchange.client.getMarketOnchain(market.id as `0x${string}`);
 
-        // Status: 0=Pending, 1=Trading, 2=Halted, 3=Resolved, 4=Voided
-        if (onchain.status === 3 || onchain.status === 4) {
+        // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
+        if (onchain.status === 4 || onchain.status === 5) {
           sampleSize++;
 
-          if (onchain.status === 4) {
+          if (onchain.status === 5) {
             voidedCount++;
-          } else if (onchain.status === 3) {
+          } else if (onchain.status === 4) {
             // Resolved - check winning outcome
             // winningOutcome: 0 = Down/NO won, 1 = Up/YES won
             if (onchain.winningOutcome === 1) {

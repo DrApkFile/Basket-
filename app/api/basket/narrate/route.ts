@@ -25,7 +25,7 @@ interface LegWithOutcome extends LegDoc {
 
 /**
  * Determine if a leg won/lost based on on-chain resolution data.
- * Status codes: 0=Pending, 1=Trading, 2=Halted, 3=Resolved, 4=Voided
+ * MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
  */
 async function checkLegOutcome(
   exchange: SomniaMarkets,
@@ -34,12 +34,12 @@ async function checkLegOutcome(
   try {
     const onchain = await exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
 
-    if (onchain.status === 4) {
+    if (onchain.status === 5) {
       // Voided — both sides redeem at 0.5
       return { outcome: "voided", payout: leg.filled * 0.5 };
     }
 
-    if (onchain.status === 3) {
+    if (onchain.status === 4) {
       // Resolved — check winning outcome
       // winningOutcome: 0 = DOWN/NO, 1 = UP/YES
       const winningOutcome = onchain.winningOutcome;
@@ -55,7 +55,7 @@ async function checkLegOutcome(
       }
     }
 
-    // Not yet resolved (Pending=0, Trading=1, Halted=2)
+    // Not yet resolved (Listed=0, Trading=1, Locked=2, Settling=3)
     return { outcome: "pending", payout: 0 };
   } catch {
     // Market might be finalized/removed from registry
@@ -102,11 +102,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate summary stats
-    // Status codes: 0=Pending, 1=Trading, 2=Halted, 3=Resolved, 4=Voided
+    // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
     const tradingCount = legsWithOutcomes.filter((l) => l.onchainStatus === 1).length;
-    const lockedCount = legsWithOutcomes.filter((l) => l.onchainStatus === 2).length;
-    const resolvedCount = legsWithOutcomes.filter((l) => l.onchainStatus === 3).length;
-    const voidedCount = legsWithOutcomes.filter((l) => l.onchainStatus === 4).length;
+    const lockedCount = legsWithOutcomes.filter((l) => l.onchainStatus === 2 || l.onchainStatus === 3).length;
+    const resolvedCount = legsWithOutcomes.filter((l) => l.onchainStatus === 4).length;
+    const voidedCount = legsWithOutcomes.filter((l) => l.onchainStatus === 5).length;
     const settledCount = resolvedCount + voidedCount;
 
     const wins = legsWithOutcomes.filter((l) => l.resolvedOutcome === "won").length;

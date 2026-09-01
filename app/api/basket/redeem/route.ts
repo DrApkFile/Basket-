@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       try {
         const onchain = await exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
 
-        // Status codes: 0=Pending, 1=Trading, 2=Halted, 3=Resolved, 4=Voided
-        if (onchain.status === 3) {
+        // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
+        if (onchain.status === 4) {
           // Resolved — check if this leg won
           const winningOutcome = onchain.winningOutcome; // 0 = NO/DOWN, 1 = YES/UP
           const legOutcomeIndex = leg.side === "YES" ? 1 : 0;
@@ -78,12 +78,12 @@ export async function POST(request: NextRequest) {
               symbol: leg.symbol,
               side: leg.side,
               filled: leg.filled,
-              onchainStatus: 3,
+              onchainStatus: 4,
               outcomeIndex: legOutcomeIndex,
               estimatedPayout: leg.filled, // $1 per contract
             });
           }
-        } else if (onchain.status === 4) {
+        } else if (onchain.status === 5) {
           // Voided — both sides can redeem at 0.5
           const legOutcomeIndex = leg.side === "YES" ? 1 : 0;
           redeemableLegs.push({
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
             symbol: leg.symbol,
             side: leg.side,
             filled: leg.filled,
-            onchainStatus: 4,
+            onchainStatus: 5,
             outcomeIndex: legOutcomeIndex,
             estimatedPayout: leg.filled * 0.5,
           });
