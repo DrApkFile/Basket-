@@ -45,14 +45,33 @@ export default function CommunityPanel() {
     fetchCommunityBaskets();
   }, [fetchCommunityBaskets]);
 
+  // Helper to get interval duration in minutes for comparison
+  const getIntervalMinutes = (interval: string): number => {
+    if (interval.includes("hr") || interval.includes("hour")) return 60;
+    if (interval.includes("15")) return 15;
+    if (interval.includes("5")) return 5;
+    return 0;
+  };
+
+  // Get the longest interval from a basket's intervals
+  const getLongestInterval = (intervals: string[]): string | null => {
+    if (!intervals || intervals.length === 0) return null;
+    return intervals.reduce((longest, current) =>
+      getIntervalMinutes(current) > getIntervalMinutes(longest) ? current : longest
+    );
+  };
+
   const filteredBaskets = baskets.filter((b) => {
     // Asset filter
     if (assetFilter !== "all") {
       if (b.asset !== assetFilter && b.asset !== "BTC + ETH") return false;
     }
-    // Interval filter
+    // Interval filter - match by longest interval in basket
     if (intervalFilter !== "all") {
-      if (!b.intervals || !b.intervals.includes(intervalFilter)) return false;
+      const longestInterval = getLongestInterval(b.intervals || []);
+      if (!longestInterval) return false;
+      // Check if the longest interval matches the filter
+      if (getIntervalMinutes(longestInterval) !== getIntervalMinutes(intervalFilter)) return false;
     }
     return true;
   });
