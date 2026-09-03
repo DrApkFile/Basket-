@@ -48,6 +48,10 @@ export async function placeBatchOrders(
   const results: OrderResult[] = [];
   let successCount = 0;
 
+  // Load markets first - SDK requires this to resolve symbols
+  onProgress?.(0, legs.length, "Loading markets...");
+  await exchange.loadMarkets();
+
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i];
     onProgress?.(i, legs.length, leg.symbol);
