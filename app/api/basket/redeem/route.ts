@@ -68,11 +68,13 @@ export async function POST(request: NextRequest) {
         // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
         if (onchain.status === 4) {
           // Resolved — check if this leg won
-          const winningOutcome = onchain.winningOutcome; // 0 = NO/DOWN, 1 = YES/UP
-          const legOutcomeIndex = leg.side === "YES" ? 1 : 0;
+          // SDK convention: winningOutcome 0 = YES won, 1 = NO won
+          // SDK convention: outcomeIdx 0 = YES tokens, 1 = NO tokens
+          const winningOutcome = onchain.winningOutcome;
+          const legOutcomeIndex = leg.side === "YES" ? 0 : 1;
 
           if (winningOutcome === legOutcomeIndex) {
-            // This leg won
+            // This leg won (user bet on the winning outcome)
             redeemableLegs.push({
               marketId: leg.marketId,
               symbol: leg.symbol,
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
           }
         } else if (onchain.status === 5) {
           // Voided — both sides can redeem at 0.5
-          const legOutcomeIndex = leg.side === "YES" ? 1 : 0;
+          const legOutcomeIndex = leg.side === "YES" ? 0 : 1;
           redeemableLegs.push({
             marketId: leg.marketId,
             symbol: leg.symbol,

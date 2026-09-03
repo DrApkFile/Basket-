@@ -176,7 +176,7 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       const errors: string[] = [];
 
       // Build entries for batch redemption
-      // SDK outcomeIdx: 0 = YES, 1 = NO (opposite of winningOutcome convention)
+      // SDK convention: outcomeIdx 0 = YES, 1 = NO (same as winningOutcome)
       // Amount must be in raw units (6 decimals for tUSDC)
       const entries = redeemableLegs.map((leg) => {
         // leg.side is "YES" or "NO" from our API

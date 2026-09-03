@@ -45,9 +45,9 @@ async function checkLegOnchain(
       outcome = "voided";
       payout = leg.filled * 0.5;
     } else if (onchain.status === 4) {
-      // winningOutcome: 0 = DOWN/NO, 1 = UP/YES
+      // SDK convention: winningOutcome 0 = YES won, 1 = NO won
       const legIsYes = leg.side === "YES";
-      const won = (onchain.winningOutcome === 1 && legIsYes) || (onchain.winningOutcome === 0 && !legIsYes);
+      const won = (onchain.winningOutcome === 0 && legIsYes) || (onchain.winningOutcome === 1 && !legIsYes);
       outcome = won ? "won" : "lost";
       payout = won ? leg.filled : 0;
     }
