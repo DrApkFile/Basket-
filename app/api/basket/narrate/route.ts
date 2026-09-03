@@ -42,14 +42,31 @@ async function checkLegOnchain(
 
     // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
     if (onchain.status === 5) {
-      outcome = "voided";
-      payout = leg.filled * 0.5;
+      // Voided - but only if user has filled position
+      if (leg.filled > 0) {
+        outcome = "voided";
+        payout = leg.filled * 0.5;
+      } else {
+        outcome = "lost"; // No position = nothing to claim
+        payout = 0;
+      }
     } else if (onchain.status === 4) {
       // SDK convention: winningOutcome 0 = YES won, 1 = NO won
       const legIsYes = leg.side === "YES";
-      const won = (onchain.winningOutcome === 0 && legIsYes) || (onchain.winningOutcome === 1 && !legIsYes);
-      outcome = won ? "won" : "lost";
-      payout = won ? leg.filled : 0;
+      const marketWentTheirWay = (onchain.winningOutcome === 0 && legIsYes) || (onchain.winningOutcome === 1 && !legIsYes);
+
+      if (leg.filled > 0 && marketWentTheirWay) {
+        outcome = "won";
+        payout = leg.filled;
+      } else if (leg.filled > 0) {
+        outcome = "lost";
+        payout = 0;
+      } else {
+        // No filled position - show as lost (nothing to claim)
+        // Could show "unfilled" but that's a new status we'd need to add
+        outcome = "lost";
+        payout = 0;
+      }
     }
 
     return { status: onchain.status, winningOutcome: onchain.winningOutcome, outcome, payout };
@@ -155,9 +172,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate narration (skip if requested for speed, or use simple template)
+    // BUT always regenerate when status changes, even during fast polling
     let narration = basket.narration || "";
+    const statusChanged = newStatus !== basket.status;
 
-    if (!skipNarration && (newStatus !== basket.status || !narration)) {
+    if (statusChanged || (!skipNarration && !narration)) {
       // Try Gemini, but fall back to simple template if it fails
       const apiKey = process.env.GEMINI_API_KEY;
 
@@ -233,6 +252,7 @@ ${settledCount === legs.length ? "All legs settled - ready to redeem." : pending
         outcome: l.resolvedOutcome,
         payout: l.payout,
         redeemable: (l.resolvedOutcome === "won" || l.resolvedOutcome === "voided") && !l.redeemTxHash && l.filled > 0,
+        unfilled: !l.filled || l.filled <= 0, // Flag to show order never matched
       })),
     });
   } catch (err) {

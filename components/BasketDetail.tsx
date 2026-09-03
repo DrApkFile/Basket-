@@ -40,6 +40,7 @@ interface NarrationResponse {
     outcome: string;
     payout: number;
     redeemable: boolean;
+    unfilled?: boolean;
   }>;
 }
 
@@ -472,7 +473,7 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
                     price: leg.price,
                     quantity: leg.filled,
                     interval: leg.interval,
-                    outcome: leg.outcome,
+                    outcome: leg.unfilled ? "unfilled" : leg.outcome,
                     payout: leg.payout,
                   }}
                   showCost={false}
@@ -480,6 +481,11 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
                   showOutcome={true}
                   compact={true}
                 />
+                {leg.unfilled && (
+                  <p className="mt-1 text-[10px] text-yellow-400/70">
+                    Order not matched — no liquidity at your price
+                  </p>
+                )}
               </li>
             ))}
           </ul>
