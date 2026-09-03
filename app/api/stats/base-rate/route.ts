@@ -98,8 +98,8 @@ async function computeBaseRates(): Promise<AssetStats[]> {
         if (onchain.status === 5) {
           voidedCount++;
         } else if (onchain.status === 4) {
-          // winningOutcome: 0 = Down/NO won, 1 = Up/YES won
-          if (onchain.winningOutcome === 1) {
+          // SDK convention: winningOutcome 0 = YES/Up won, 1 = NO/Down won
+          if (onchain.winningOutcome === 0) {
             upWins++;
           } else {
             downWins++;

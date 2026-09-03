@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getBasket } from "@/lib/firestore-server";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { SomniaMarkets, SOMNIA_TESTNET_ADDRESSES } from "@somnia-chain/markets-sdk";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
@@ -25,6 +25,7 @@ const INDEXER_URL = "https://dev.smk.somnia.host/v1/graphql";
 
 interface CopyRequest {
   basketId: string;
+  userId: string; // Wallet address of user copying
   maxSpend?: number; // Optional: user's new max spend (defaults to original)
 }
 
@@ -35,10 +36,13 @@ interface DroppedLeg {
 
 export async function POST(request: NextRequest) {
   try {
-    const { basketId, maxSpend: userMaxSpend } = (await request.json()) as CopyRequest;
+    const { basketId, userId, maxSpend: userMaxSpend } = (await request.json()) as CopyRequest;
 
     if (!basketId) {
       return NextResponse.json({ error: "basketId required" }, { status: 400 });
+    }
+    if (!userId) {
+      return NextResponse.json({ error: "userId required" }, { status: 400 });
     }
 
     // 1. Load original basket
@@ -201,16 +205,36 @@ export async function POST(request: NextRequest) {
     const assets = [...new Set(liveDraftLegs.map((l) => l.symbol.split("-")[0]))];
     const isCrossAsset = assets.length > 1;
 
+    // 6. Save draft to Firestore (real persistence, not sessionStorage)
+    const draftData = {
+      userId,
+      copiedFromBasketId: basketId,
+      asset: isCrossAsset ? assets.join(" + ") : assets[0],
+      crossAsset: isCrossAsset,
+      legs: liveDraftLegs,
+      totalCost,
+      worstCase: 0,
+      bestCase: totalQuantity,
+      maxSpend: userMaxSpend ?? Math.ceil(totalCost * 1.1),
+      originalReasoning: basket.aiReasoning,
+      droppedLegs,
+      status: "draft",
+      createdAt: serverTimestamp(),
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000), // Draft expires in 30 minutes
+    };
+
+    const draftRef = await addDoc(collection(db, "basket_drafts"), draftData);
+
     return NextResponse.json({
-      // Pre-fill data for constructor
+      draftId: draftRef.id,
+      // Include draft data for immediate display
       draft: {
-        asset: isCrossAsset ? assets.join("+") : assets[0],
+        asset: isCrossAsset ? assets.join(" + ") : assets[0],
         crossAsset: isCrossAsset,
         legs: liveDraftLegs,
         totalCost,
         worstCase: 0,
         bestCase: totalQuantity,
-        // Original reasoning for reference (user can regenerate)
         originalReasoning: basket.aiReasoning,
       },
       // Transparency about what was dropped
@@ -220,7 +244,7 @@ export async function POST(request: NextRequest) {
       copiedLegCount: liveDraftLegs.length,
       // Original settings (editable)
       originalMaxSpend: basket.maxSpend,
-      suggestedMaxSpend: userMaxSpend ?? Math.ceil(totalCost * 1.1), // 10% buffer
+      suggestedMaxSpend: userMaxSpend ?? Math.ceil(totalCost * 1.1),
       message:
         droppedLegs.length > 0
           ? `${liveDraftLegs.length} of ${originalLegs.length} windows copied. ${droppedLegs.length} dropped (see droppedLegs for details).`

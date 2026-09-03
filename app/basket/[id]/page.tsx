@@ -33,6 +33,7 @@ interface LegData {
 }
 
 interface CopyResult {
+  draftId: string;
   draft: {
     asset: string;
     crossAsset: boolean;
@@ -160,7 +161,7 @@ export default function SharedBasketPage() {
 
   // Handle copy to my basket
   async function handleCopy() {
-    if (!isConnected) return;
+    if (!isConnected || !address) return;
 
     setCopying(true);
     setCopyError(null);
@@ -170,7 +171,7 @@ export default function SharedBasketPage() {
       const res = await fetch("/api/basket/copy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ basketId }),
+        body: JSON.stringify({ basketId, userId: address }),
       });
 
       const data = await res.json();
@@ -180,10 +181,6 @@ export default function SharedBasketPage() {
       }
 
       setCopyResult(data);
-
-      // Store draft in sessionStorage for constructor to pick up
-      sessionStorage.setItem("basketDraft", JSON.stringify(data.draft));
-      sessionStorage.setItem("basketDraftDropped", JSON.stringify(data.droppedLegs));
     } catch (err) {
       setCopyError(err instanceof Error ? err.message : "Copy failed");
     } finally {
@@ -191,9 +188,11 @@ export default function SharedBasketPage() {
     }
   }
 
-  // Navigate to constructor with draft
+  // Navigate to constructor with draft (uses real Firestore draftId)
   function handleEditDraft() {
-    router.push("/basket?mode=draft");
+    if (copyResult?.draftId) {
+      router.push(`/basket?draftId=${copyResult.draftId}`);
+    }
   }
 
   // Handle ask question

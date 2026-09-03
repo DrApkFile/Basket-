@@ -5,7 +5,7 @@ import { useAccount, useWalletClient, useChainId, useSwitchChain } from "wagmi";
 import { X } from "lucide-react";
 import { createExchange } from "@/lib/somnia";
 import { placeBatchOrders, verifyMarketsTrading } from "@/lib/batch-orders";
-import type { BasketConstructInput, BasketProposal } from "@/lib/firestore-types";
+import type { BasketConstructInput, BasketProposal, ProposedLeg } from "@/lib/firestore-types";
 import type { BatchOrderResult } from "@/lib/batch-orders";
 import PositionCard from "./PositionCard";
 import { LoomIcon } from "./icons";
@@ -14,6 +14,17 @@ type Step = "form" | "loading" | "proposal" | "placing" | "done" | "error";
 
 const SOMNIA_SHANNON_CHAIN_ID = 50312;
 
+interface DraftData {
+  draftId: string;
+  asset: string;
+  crossAsset: boolean;
+  legs: ProposedLeg[];
+  totalCost: number;
+  maxSpend: number;
+  originalReasoning: string;
+  droppedLegs: Array<{ symbol: string; reason: string }>;
+}
+
 interface BasketModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,6 +32,7 @@ interface BasketModalProps {
   availableAssets?: string[];
   marketCount?: number;
   onBasketCreated?: () => void;
+  draftData?: DraftData | null;
 }
 
 export default function BasketModal({
@@ -30,6 +42,7 @@ export default function BasketModal({
   availableAssets = ["BTC", "ETH"],
   marketCount = 0,
   onBasketCreated,
+  draftData,
 }: BasketModalProps) {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -56,15 +69,39 @@ export default function BasketModal({
 
   useEffect(() => {
     if (isOpen) {
-      setStep("form");
       setError(null);
-      setProposal(null);
       setBasketId(null);
       setProgress("");
       setOrderResults(null);
-      setAsset(defaultAsset);
+
+      // If we have draft data from a copy, skip to proposal step
+      if (draftData) {
+        const draftProposal: BasketProposal = {
+          asset: draftData.asset,
+          legs: draftData.legs,
+          totalCost: draftData.totalCost,
+          worstCase: 0,
+          bestCase: draftData.legs.reduce((sum, l) => sum + l.quantity, 0),
+          reasoning: draftData.originalReasoning || "Copied from shared basket",
+          proposalHash: "",
+          proposalTimestamp: new Date().toISOString(),
+          riskComparison: {
+            basketStdDev: 0,
+            singleBetStdDev: 0,
+            varianceReductionPct: 0,
+          },
+        };
+        setProposal(draftProposal);
+        setAsset(draftData.asset);
+        setMaxSpend(draftData.maxSpend);
+        setStep("proposal");
+      } else {
+        setStep("form");
+        setProposal(null);
+        setAsset(defaultAsset);
+      }
     }
-  }, [isOpen, defaultAsset]);
+  }, [isOpen, defaultAsset, draftData]);
 
   useEffect(() => {
     if (walletClient && exchangeRef.current) {

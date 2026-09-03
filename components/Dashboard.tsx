@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import Link from "next/link";
@@ -11,7 +12,18 @@ import MyBasketsPanel from "./MyBasketsPanel";
 import BaseRateStats from "./BaseRateStats";
 import BalanceDisplay from "./BalanceDisplay";
 import { AssetIcon } from "./icons";
-import type { BasketDoc } from "@/lib/firestore-types";
+import type { BasketDoc, ProposedLeg } from "@/lib/firestore-types";
+
+interface DraftData {
+  draftId: string;
+  asset: string;
+  crossAsset: boolean;
+  legs: ProposedLeg[];
+  totalCost: number;
+  maxSpend: number;
+  originalReasoning: string;
+  droppedLegs: Array<{ symbol: string; reason: string }>;
+}
 
 interface Market {
   id: string;
@@ -35,6 +47,8 @@ type Tab = "markets" | "community" | "baskets";
 
 export default function Dashboard() {
   const { address } = useAccount();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +58,8 @@ export default function Dashboard() {
   const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
   const [userBaskets, setUserBaskets] = useState<UserBasket[]>([]);
   const [basketsLoading, setBasketsLoading] = useState(false);
+  const [draftData, setDraftData] = useState<DraftData | null>(null);
+  const [draftLoading, setDraftLoading] = useState(false);
 
   const fetchMarkets = useCallback(async () => {
     try {
@@ -89,6 +105,47 @@ export default function Dashboard() {
     const interval = setInterval(fetchUserBaskets, 15000);
     return () => clearInterval(interval);
   }, [fetchUserBaskets]);
+
+  // Handle draftId from URL (for copied baskets)
+  useEffect(() => {
+    const draftId = searchParams.get("draftId");
+    if (!draftId) return;
+
+    async function fetchDraft() {
+      setDraftLoading(true);
+      try {
+        const res = await fetch(`/api/basket/draft?draftId=${draftId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDraftData(data);
+          setIsBasketModalOpen(true);
+          // Clear the URL param without navigation
+          router.replace("/basket", { scroll: false });
+        } else {
+          const err = await res.json();
+          console.error("Draft load failed:", err.error);
+          router.replace("/basket", { scroll: false });
+        }
+      } catch (err) {
+        console.error("Draft fetch error:", err);
+        router.replace("/basket", { scroll: false });
+      } finally {
+        setDraftLoading(false);
+      }
+    }
+
+    fetchDraft();
+  }, [searchParams, router]);
+
+  // Clear draft when modal closes
+  const handleModalClose = () => {
+    setIsBasketModalOpen(false);
+    if (draftData) {
+      // Delete the draft from Firestore since user closed without using it
+      fetch(`/api/basket/draft?draftId=${draftData.draftId}`, { method: "DELETE" }).catch(() => {});
+      setDraftData(null);
+    }
+  };
 
   const filteredMarkets = markets.filter((m) => {
     if (filter === "btc") return m.asset === "BTC";
@@ -787,11 +844,25 @@ export default function Dashboard() {
 
         <BasketModal
           isOpen={isBasketModalOpen}
-          onClose={() => setIsBasketModalOpen(false)}
+          onClose={handleModalClose}
           availableAssets={availableAssets}
           marketCount={markets.length}
-          onBasketCreated={fetchUserBaskets}
+          onBasketCreated={() => {
+            fetchUserBaskets();
+            setDraftData(null); // Clear draft on success
+          }}
+          draftData={draftData}
         />
+
+        {/* Draft loading overlay */}
+        {draftLoading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="rounded-xl bg-white/10 p-6 text-center">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-orange-500" />
+              <p className="mt-3 text-sm text-white/70">Loading draft...</p>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
