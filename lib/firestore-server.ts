@@ -16,6 +16,7 @@ import {
   serverTimestamp,
   query,
   where,
+  orderBy,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -135,40 +136,55 @@ export async function updateLegStatus(
 /**
  * Get all legs for a basket with their current on-chain status.
  * Refreshes status from chain before returning.
+ * Uses PARALLEL calls with timeout for speed.
  */
 export async function getBasketLegsWithStatus(basketId: string): Promise<LegDoc[]> {
   const exchange = getServerExchange();
   const legsSnap = await getDocs(collection(db, "baskets", basketId, "legs"));
 
-  const legs: LegDoc[] = [];
-  for (const legSnap of legsSnap.docs) {
-    const leg = legSnap.data() as LegDoc;
+  const RPC_TIMEOUT_MS = 3000;
 
-    // CRITICAL: Refresh on-chain status
-    try {
-      const onchain = await exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
-      if (onchain.status !== leg.onchainStatus) {
-        // Update Firestore with fresh status
-        await updateDoc(legSnap.ref, { onchainStatus: onchain.status });
-        leg.onchainStatus = onchain.status;
+  // Check ALL legs in PARALLEL for speed
+  const results = await Promise.all(
+    legsSnap.docs.map(async (legSnap) => {
+      const leg = legSnap.data() as LegDoc;
+
+      try {
+        // Race against timeout
+        const onchain = await Promise.race([
+          exchange.client.getMarketOnchain(leg.marketId as `0x${string}`),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), RPC_TIMEOUT_MS)),
+        ]);
+
+        if (onchain && onchain.status !== leg.onchainStatus) {
+          // Update Firestore with fresh status (fire-and-forget for speed)
+          updateDoc(legSnap.ref, { onchainStatus: onchain.status }).catch(() => {});
+          return { ...leg, onchainStatus: onchain.status };
+        }
+      } catch {
+        // Market might be finalized — that's ok, return cached status
       }
-    } catch {
-      // Market might be finalized and not in registry — that's ok
-    }
 
-    legs.push(leg);
-  }
+      return leg;
+    })
+  );
 
-  return legs;
+  return results;
 }
 
 /**
- * Get baskets for a user.
+ * Get baskets for a user, ordered by most recently created first.
  */
 export async function getUserBaskets(userId: string): Promise<Array<BasketDoc & { id: string }>> {
-  const q = query(collection(db, "baskets"), where("userId", "==", userId));
+  const q = query(
+    collection(db, "baskets"),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as BasketDoc) }));
+  return snap.docs
+    .filter((d) => !(d.data() as BasketDoc & { deleted?: boolean }).deleted) // Exclude soft-deleted
+    .map((d) => ({ id: d.id, ...(d.data() as BasketDoc) }));
 }
 
 /**

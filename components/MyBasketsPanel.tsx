@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useAccount } from "wagmi";
+import { Trash2 } from "lucide-react";
 import BasketDetail from "./BasketDetail";
 import { AssetIcon } from "./icons";
 import type { BasketDoc } from "@/lib/firestore-types";
@@ -20,7 +22,42 @@ interface MyBasketsPanelProps {
 }
 
 export default function MyBasketsPanel({ baskets, loading, onRefresh }: MyBasketsPanelProps) {
+  const { address } = useAccount();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  async function handleDelete(basketId: string, e: React.MouseEvent) {
+    e.stopPropagation(); // Don't expand the basket
+
+    if (confirmDeleteId !== basketId) {
+      // First click - show confirmation
+      setConfirmDeleteId(basketId);
+      return;
+    }
+
+    // Second click - actually delete
+    setDeletingId(basketId);
+    try {
+      const res = await fetch("/api/basket/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ basketId, userId: address }),
+      });
+
+      if (res.ok) {
+        onRefresh(); // Refresh the list
+      } else {
+        const data = await res.json();
+        console.error("Delete failed:", data.error);
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
+  }
 
   const formatDateTime = (timestamp: { toDate?: () => Date } | string | null | undefined) => {
     if (!timestamp) return "Unknown";
@@ -111,9 +148,28 @@ export default function MyBasketsPanel({ baskets, loading, onRefresh }: MyBasket
                       {basket.status}
                     </span>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-xs text-white/30">{basket.legCount} legs</span>
-                    <span className="text-[10px] text-white/20">{formatDateTime(basket.createdAt)}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-end">
+                      <span className="text-xs text-white/30">{basket.legCount} legs</span>
+                      <span className="text-[10px] text-white/20">{formatDateTime(basket.createdAt)}</span>
+                    </div>
+                    {/* Delete button */}
+                    <button
+                      onClick={(e) => handleDelete(basket.id, e)}
+                      disabled={deletingId === basket.id}
+                      className={`rounded-lg p-2 transition-all ${
+                        confirmDeleteId === basket.id
+                          ? "bg-red-500/20 text-red-400"
+                          : "text-white/20 hover:bg-red-500/10 hover:text-red-400"
+                      }`}
+                      title={confirmDeleteId === basket.id ? "Click again to confirm" : "Remove from My Baskets"}
+                    >
+                      {deletingId === basket.id ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border border-red-400/30 border-t-red-400" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -145,12 +201,21 @@ export default function MyBasketsPanel({ baskets, loading, onRefresh }: MyBasket
                   </p>
                 )}
 
+                {/* Delete confirmation note */}
+                {confirmDeleteId === basket.id && (
+                  <div className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                    Click trash again to remove. On-chain positions are unaffected.
+                  </div>
+                )}
+
                 {/* Expand hint */}
-                <div className="mt-3 flex justify-end">
-                  <span className="text-xs font-medium text-orange-400 opacity-0 transition-opacity group-hover:opacity-100">
-                    View Details →
-                  </span>
-                </div>
+                {confirmDeleteId !== basket.id && (
+                  <div className="mt-3 flex justify-end">
+                    <span className="text-xs font-medium text-orange-400 opacity-0 transition-opacity group-hover:opacity-100">
+                      View Details →
+                    </span>
+                  </div>
+                )}
               </button>
             )}
           </div>
