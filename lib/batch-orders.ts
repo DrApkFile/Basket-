@@ -52,9 +52,22 @@ export async function placeBatchOrders(
   onProgress?.(0, legs.length, "Loading markets...");
   await exchange.loadMarkets();
 
+  // Debug: log loaded market count
+  const marketCount = Object.keys(exchange.markets).length;
+  console.log(`[batch-orders] Loaded ${marketCount} markets`);
+
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i];
     onProgress?.(i, legs.length, leg.symbol);
+
+    // Debug: check if this specific market exists in loaded markets
+    const marketExists = Object.values(exchange.markets).some(m => m.symbol === leg.symbol);
+    console.log(`[batch-orders] Market ${leg.symbol} exists: ${marketExists}`);
+    if (!marketExists) {
+      // Log available symbols for debugging
+      const availableSymbols = Object.values(exchange.markets).map(m => m.symbol).slice(0, 5);
+      console.log(`[batch-orders] Sample available symbols:`, availableSymbols);
+    }
 
     try {
       // Construct the full symbol with outcome side
@@ -94,6 +107,9 @@ export async function placeBatchOrders(
           errorMsg = "Insufficient tUSDC balance";
         } else if (errorMsg.includes("WebSocket")) {
           errorMsg = "RPC connection failed (testnet may be unstable)";
+        } else if (errorMsg.includes("unknown symbol")) {
+          // Symbol not found - could be stale proposal or SDK issue
+          errorMsg = `Market not found: ${leg.symbol}. Try creating a new basket.`;
         }
       }
 

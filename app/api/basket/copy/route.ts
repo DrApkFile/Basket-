@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
         liveDraftLegs.push({
           marketId: leg.marketId,
-          symbol: leg.symbol,
+          symbol: market.symbol, // Use fresh SDK symbol, not stored leg symbol
           side: leg.side,
           quantity: leg.quantity, // Keep original quantity as starting point
           price: livePrice, // LIVE price, not stored

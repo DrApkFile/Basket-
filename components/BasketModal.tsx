@@ -406,6 +406,31 @@ export default function BasketModal({
           <>
             <h2 className="text-lg font-bold text-white">Basket Proposal</h2>
 
+            {/* Availability note - when fewer windows than requested */}
+            {proposal.availabilityNote && (
+              <div className="mt-3 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2">
+                <p className="text-xs text-orange-300">
+                  <span className="font-medium">Note:</span> {proposal.availabilityNote.message}
+                </p>
+              </div>
+            )}
+
+            {/* Dropped legs from copy - show which markets couldn't be included */}
+            {draftData?.droppedLegs && draftData.droppedLegs.length > 0 && (
+              <div className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+                <p className="text-xs font-medium text-yellow-300">
+                  {draftData.droppedLegs.length} position{draftData.droppedLegs.length > 1 ? "s" : ""} from original basket couldn&apos;t be copied:
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {draftData.droppedLegs.map((d, i) => (
+                    <li key={i} className="text-[10px] text-yellow-200/70">
+                      {d.symbol}: {d.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Summary */}
             <div className="mt-4 grid grid-cols-3 gap-4 rounded-lg bg-white/5 p-4 text-center text-sm">
               <div>
