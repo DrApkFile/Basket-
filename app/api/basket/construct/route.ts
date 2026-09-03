@@ -437,16 +437,68 @@ Respond with JSON:
       );
     }
 
+    // ============================================================
+    // PRICE-FRESHNESS GUARD: Re-fetch live prices and auto-correct
+    // ============================================================
+    const PRICE_DRIFT_TOLERANCE_PCT = 2; // 2% tolerance
+
+    // Re-fetch current prices and update legs with fresh data
+    for (const leg of finalLegs) {
+      try {
+        // Re-fetch current order book (fresh read, not cached)
+        const book = await exchange.fetchOrderBook(`${leg.symbol}#YES`, 10);
+        const freshBestAsk = book.asks[0]?.[0] ?? 0.5;
+        const currentPrice = leg.side === "YES" ? freshBestAsk : 1 - freshBestAsk;
+
+        const driftPct = Math.abs(currentPrice - leg.price) / leg.price * 100;
+
+        if (driftPct > PRICE_DRIFT_TOLERANCE_PCT) {
+          // Auto-correct: update to fresh price and recalculate cost
+          console.log(`Price drift corrected for ${leg.symbol}: ${leg.price.toFixed(4)} → ${currentPrice.toFixed(4)} (${driftPct.toFixed(1)}%)`);
+          leg.price = currentPrice;
+          leg.cost = leg.quantity * currentPrice;
+        }
+      } catch (err) {
+        // If we can't verify price, log but continue with original
+        console.warn(`Price freshness check failed for ${leg.symbol}:`, err);
+      }
+    }
+
+    // Recalculate total cost after any price corrections
+    totalCost = finalLegs.reduce((sum, l) => sum + l.cost, 0);
+
+    // Re-check max spend constraint after price corrections
+    if (totalCost > maxSpend) {
+      const scaleFactor = maxSpend / totalCost;
+      totalCost = 0;
+      for (const leg of finalLegs) {
+        leg.quantity = Math.floor(leg.quantity * scaleFactor);
+        leg.cost = leg.quantity * leg.price;
+        totalCost += leg.cost;
+      }
+    }
+
+    // Remove any legs that became 0 quantity after re-scaling
+    const freshLegs = finalLegs.filter((l) => l.quantity > 0);
+
+    if (freshLegs.length === 0) {
+      return NextResponse.json(
+        { error: "Prices moved significantly. Max spend too low for current prices." },
+        { status: 400 }
+      );
+    }
+    // ============================================================
+
     // Calculate worst/best case payouts
     // Worst case: all positions lose → payout = 0
     // Best case: all positions win → payout = total quantity (1 USDC per contract)
-    const totalQuantity = finalLegs.reduce((sum, l) => sum + l.quantity, 0);
+    const totalQuantity = freshLegs.reduce((sum, l) => sum + l.quantity, 0);
     const worstCase = 0;
     const bestCase = totalQuantity;
 
     // Compute risk comparison (deterministic, not from AI)
     const riskData = computeRiskComparison(
-      finalLegs.map((l) => ({ price: l.price, cost: l.cost })),
+      freshLegs.map((l) => ({ price: l.price, cost: l.cost })),
       totalCost
     );
 
@@ -459,7 +511,7 @@ Respond with JSON:
     // Build proposal without hash first (for hashing)
     const proposalData = {
       asset: assetLabel,
-      legs: finalLegs,
+      legs: freshLegs,
       totalCost,
       worstCase,
       bestCase,
@@ -479,7 +531,7 @@ Respond with JSON:
         timestamp: proposalTimestamp,
         asset: assetLabel,
         totalCost,
-        legCount: finalLegs.length,
+        legCount: freshLegs.length,
         crossAsset: isCrossAsset,
         createdAt: new Date(),
       });

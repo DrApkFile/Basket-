@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAccount } from "wagmi";
 import Link from "next/link";
 import { AssetIcon, LoomIcon } from "./icons";
 
@@ -18,13 +19,16 @@ interface CommunityBasket {
 
 type AssetFilter = "all" | "BTC" | "ETH" | "BTC+ETH";
 type IntervalFilter = "all" | "5min" | "15min" | "1hr";
+type ViewMode = "all" | "mine";
 
 export default function CommunityPanel() {
+  const { address } = useAccount();
   const [baskets, setBaskets] = useState<CommunityBasket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
   const [intervalFilter, setIntervalFilter] = useState<IntervalFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
 
   const fetchCommunityBaskets = useCallback(async () => {
     setLoading(true);
@@ -61,7 +65,16 @@ export default function CommunityPanel() {
     );
   };
 
+  // Separate my baskets from others
+  const myBaskets = address
+    ? baskets.filter((b) => b.creatorWallet.toLowerCase() === address.toLowerCase())
+    : [];
+
   const filteredBaskets = baskets.filter((b) => {
+    // View mode filter
+    if (viewMode === "mine") {
+      if (!address || b.creatorWallet.toLowerCase() !== address.toLowerCase()) return false;
+    }
     // Asset filter
     if (assetFilter !== "all") {
       if (b.asset !== assetFilter && b.asset !== "BTC + ETH") return false;
@@ -94,6 +107,21 @@ export default function CommunityPanel() {
     return date.toLocaleDateString();
   };
 
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return "Unknown";
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Check if basket belongs to current user
+  const isMyBasket = (basket: CommunityBasket) =>
+    address && basket.creatorWallet.toLowerCase() === address.toLowerCase();
+
   return (
     <div className="mx-auto max-w-5xl">
       {/* Header */}
@@ -108,6 +136,32 @@ export default function CommunityPanel() {
           Explore baskets shared by other traders. View strategies and copy winning approaches.
         </p>
       </div>
+
+      {/* View Mode Toggle */}
+      {address && myBaskets.length > 0 && (
+        <div className="mb-6 flex gap-2">
+          <button
+            onClick={() => setViewMode("all")}
+            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+              viewMode === "all"
+                ? "bg-orange-500/15 border-orange-500/30 text-white"
+                : "bg-white/[0.02] border-white/6 text-white/50 hover:border-white/10"
+            }`}
+          >
+            All Community ({baskets.length})
+          </button>
+          <button
+            onClick={() => setViewMode("mine")}
+            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+              viewMode === "mine"
+                ? "bg-orange-500/15 border-orange-500/30 text-white"
+                : "bg-white/[0.02] border-white/6 text-white/50 hover:border-white/10"
+            }`}
+          >
+            My Shared ({myBaskets.length})
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-6 space-y-3">
@@ -326,9 +380,14 @@ export default function CommunityPanel() {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between border-t border-white/5 pt-4">
-                  <span className="text-xs text-white/30">
-                    {formatTimeAgo(basket.createdAt)}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-white/30">
+                      {isMyBasket(basket) ? formatDateTime(basket.createdAt) : formatTimeAgo(basket.createdAt)}
+                    </span>
+                    {isMyBasket(basket) && (
+                      <span className="text-[10px] text-orange-400/60 mt-0.5">Your basket</span>
+                    )}
+                  </div>
                   <span className="text-xs font-medium text-orange-400 opacity-0 transition-opacity group-hover:opacity-100">
                     View Details →
                   </span>

@@ -22,6 +22,26 @@ interface MyBasketsPanelProps {
 export default function MyBasketsPanel({ baskets, loading, onRefresh }: MyBasketsPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const formatDateTime = (timestamp: { toDate?: () => Date } | string | null | undefined) => {
+    if (!timestamp) return "Unknown";
+    const date = typeof timestamp === "string"
+      ? new Date(timestamp)
+      : timestamp.toDate?.() ?? new Date();
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Sort baskets by creation date (most recent first)
+  const sortedBaskets = [...baskets].sort((a, b) => {
+    const dateA = a.createdAt?.toDate?.()?.getTime() ?? 0;
+    const dateB = b.createdAt?.toDate?.()?.getTime() ?? 0;
+    return dateB - dateA;
+  });
+
   return (
     <div className="rounded-2xl border border-white/6 bg-gradient-to-br from-white/[0.02] to-transparent p-6">
       {/* Header */}
@@ -63,7 +83,7 @@ export default function MyBasketsPanel({ baskets, loading, onRefresh }: MyBasket
 
       {/* Baskets List */}
       <div className="space-y-3">
-        {baskets.map((basket) => (
+        {sortedBaskets.map((basket) => (
           <div key={basket.id}>
             {expandedId === basket.id ? (
               <BasketDetail basketId={basket.id} onClose={() => setExpandedId(null)} />
@@ -91,7 +111,10 @@ export default function MyBasketsPanel({ baskets, loading, onRefresh }: MyBasket
                       {basket.status}
                     </span>
                   </div>
-                  <span className="text-xs text-white/30">{basket.legCount} legs</span>
+                  <div className="flex flex-col items-end">
+                    <span className="text-xs text-white/30">{basket.legCount} legs</span>
+                    <span className="text-[10px] text-white/20">{formatDateTime(basket.createdAt)}</span>
+                  </div>
                 </div>
 
                 {/* Stats */}
