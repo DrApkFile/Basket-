@@ -9,8 +9,8 @@
  * This function is called client-side (needs wallet signature for each order).
  */
 
-import type { SomniaMarkets } from "@somnia-chain/markets-sdk";
-import type { ProposedLeg } from "./firestore-types";
+import type { SomniaMarkets, Market } from "@somnia-chain/markets-sdk";
+import type { ProposedLeg, LiquidityLabel } from "./firestore-types";
 
 export interface OrderResult {
   marketId: string;
@@ -29,6 +29,119 @@ export interface BatchOrderResult {
   failCount: number;
 }
 
+export interface Substitution {
+  originalSymbol: string;
+  newSymbol: string;
+  reason: string;
+}
+
+export interface RefreshResult {
+  legs: ProposedLeg[];
+  substitutions: Substitution[];
+  droppedCount: number;
+}
+
+/**
+ * Refresh stale legs by finding replacement markets for any that have expired.
+ * Call this before placing orders to handle market rollover.
+ */
+export async function refreshStaleLegs(
+  exchange: SomniaMarkets,
+  legs: ProposedLeg[]
+): Promise<RefreshResult> {
+  await exchange.loadMarkets();
+
+  const now = Math.floor(Date.now() / 1000);
+  const refreshedLegs: ProposedLeg[] = [];
+  const substitutions: Substitution[] = [];
+  let droppedCount = 0;
+
+  // Get all currently trading binary markets
+  const tradingMarkets = Object.values(exchange.markets).filter(
+    (m) => m.type === "binary" && m.active
+  );
+
+  for (const leg of legs) {
+    // Check if original market still exists and is available
+    const originalMarket = tradingMarkets.find((m) => m.symbol === leg.symbol);
+
+    if (originalMarket) {
+      // Market still available - keep the leg as is
+      refreshedLegs.push(leg);
+      continue;
+    }
+
+    // Market not found - find a replacement with same asset
+    const asset = leg.symbol.split("-")[0]; // ETH or BTC
+
+    // Find markets for same asset, sorted by expiry (soonest first)
+    const candidates = tradingMarkets
+      .filter((m) => {
+        const marketAsset = m.symbol.split("-")[0];
+        return marketAsset === asset;
+      })
+      .map((m) => {
+        const info = m.info as { expiry?: string | number };
+        const expiry = Number(info.expiry || 0);
+        return { market: m, expiry };
+      })
+      .filter((c) => c.expiry > now + 60) // At least 1 min until expiry
+      .sort((a, b) => a.expiry - b.expiry);
+
+    if (candidates.length === 0) {
+      // No replacement available for this asset
+      droppedCount++;
+      console.log(`[refresh] No replacement found for ${leg.symbol}, dropping`);
+      continue;
+    }
+
+    // Pick the first available candidate (soonest expiry)
+    const replacement = candidates[0];
+    const newMarket = replacement.market;
+
+    // Fetch current price for the replacement market
+    let newPrice = leg.price; // Fallback to original price
+    try {
+      const book = await exchange.fetchOrderBook(`${newMarket.symbol}#YES`, 5);
+      const bestAsk = book.asks[0]?.[0] ?? 0.5;
+      newPrice = leg.side === "YES" ? bestAsk : 1 - bestAsk;
+    } catch {
+      console.warn(`[refresh] Could not fetch price for ${newMarket.symbol}, using original`);
+    }
+
+    const info = newMarket.info as { interval?: string; expiry?: string | number };
+
+    // Create refreshed leg with new market
+    const refreshedLeg: ProposedLeg = {
+      marketId: newMarket.id,
+      symbol: newMarket.symbol,
+      side: leg.side,
+      quantity: leg.quantity,
+      price: newPrice,
+      interval: info.interval ?? leg.interval,
+      expiry: Number(info.expiry || leg.expiry),
+      cost: leg.quantity * newPrice,
+      liquidityNote: `Substituted: original market expired`,
+      liquidityLabel: "thin" as LiquidityLabel,
+    };
+
+    refreshedLegs.push(refreshedLeg);
+    substitutions.push({
+      originalSymbol: leg.symbol,
+      newSymbol: newMarket.symbol,
+      reason: "Original market expired, substituted with next available window",
+    });
+
+    console.log(`[refresh] Substituted ${leg.symbol} → ${newMarket.symbol}`);
+  }
+
+  return {
+    legs: refreshedLegs,
+    substitutions,
+    droppedCount,
+  };
+}
+
 /**
  * Place multiple orders for a basket.
  * Each order is placed sequentially (not atomic) because:
@@ -44,30 +157,34 @@ export async function placeBatchOrders(
   exchange: SomniaMarkets,
   legs: ProposedLeg[],
   onProgress?: (completed: number, total: number, current: string) => void
-): Promise<BatchOrderResult> {
+): Promise<BatchOrderResult & { substitutions?: Substitution[] }> {
   const results: OrderResult[] = [];
   let successCount = 0;
 
-  // Load markets first - SDK requires this to resolve symbols
-  onProgress?.(0, legs.length, "Loading markets...");
-  await exchange.loadMarkets();
+  // Refresh stale legs first - finds replacements for expired markets
+  onProgress?.(0, legs.length, "Checking market availability...");
+  const refreshResult = await refreshStaleLegs(exchange, legs);
+  const freshLegs = refreshResult.legs;
 
-  // Debug: log loaded market count
-  const marketCount = Object.keys(exchange.markets).length;
-  console.log(`[batch-orders] Loaded ${marketCount} markets`);
+  if (freshLegs.length === 0) {
+    return {
+      results: [],
+      allSucceeded: false,
+      successCount: 0,
+      failCount: legs.length,
+      substitutions: refreshResult.substitutions,
+    };
+  }
 
-  for (let i = 0; i < legs.length; i++) {
-    const leg = legs[i];
-    onProgress?.(i, legs.length, leg.symbol);
+  // Log substitutions for debugging
+  if (refreshResult.substitutions.length > 0) {
+    console.log(`[batch-orders] Made ${refreshResult.substitutions.length} substitutions:`,
+      refreshResult.substitutions.map(s => `${s.originalSymbol} → ${s.newSymbol}`));
+  }
 
-    // Debug: check if this specific market exists in loaded markets
-    const marketExists = Object.values(exchange.markets).some(m => m.symbol === leg.symbol);
-    console.log(`[batch-orders] Market ${leg.symbol} exists: ${marketExists}`);
-    if (!marketExists) {
-      // Log available symbols for debugging
-      const availableSymbols = Object.values(exchange.markets).map(m => m.symbol).slice(0, 5);
-      console.log(`[batch-orders] Sample available symbols:`, availableSymbols);
-    }
+  for (let i = 0; i < freshLegs.length; i++) {
+    const leg = freshLegs[i];
+    onProgress?.(i, freshLegs.length, leg.symbol);
 
     try {
       // Construct the full symbol with outcome side
@@ -125,13 +242,14 @@ export async function placeBatchOrders(
     }
   }
 
-  onProgress?.(legs.length, legs.length, "Done");
+  onProgress?.(freshLegs.length, freshLegs.length, "Done");
 
   return {
     results,
-    allSucceeded: successCount === legs.length,
+    allSucceeded: successCount === freshLegs.length,
     successCount,
-    failCount: legs.length - successCount,
+    failCount: freshLegs.length - successCount,
+    substitutions: refreshResult.substitutions,
   };
 }
 

@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { useAccount, useWalletClient, useChainId, useSwitchChain } from "wagmi";
 import { X } from "lucide-react";
 import { createExchange } from "@/lib/somnia";
-import { placeBatchOrders, verifyMarketsTrading } from "@/lib/batch-orders";
+import { placeBatchOrders } from "@/lib/batch-orders";
 import type { BasketConstructInput, BasketProposal, ProposedLeg } from "@/lib/firestore-types";
-import type { BatchOrderResult } from "@/lib/batch-orders";
+import type { BatchOrderResult, Substitution } from "@/lib/batch-orders";
 import PositionCard from "./PositionCard";
 import { LoomIcon } from "./icons";
 
@@ -57,6 +57,7 @@ export default function BasketModal({
   const [basketId, setBasketId] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("");
   const [orderResults, setOrderResults] = useState<BatchOrderResult | null>(null);
+  const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
 
   const [asset, setAsset] = useState(defaultAsset);
   const [crossAsset, setCrossAsset] = useState(false);
@@ -154,39 +155,28 @@ export default function BasketModal({
     }
 
     setStep("placing");
-    setProgress("Loading markets...");
+    setProgress("Checking market availability...");
+    setSubstitutions([]);
 
     try {
       const exchange = exchangeRef.current;
-      await exchange.loadMarkets();
 
-      setProgress("Verifying markets...");
-      const verification = await verifyMarketsTrading(exchange, proposal.legs);
-
-      // Filter to only markets still trading
-      let legsToPlace = proposal.legs;
-      if (!verification.allTrading) {
-        // Some markets expired/locked - show which ones and continue with the rest
-        legsToPlace = proposal.legs.filter(
-          (leg) => !verification.failedMarkets.some((f) => f.includes(leg.symbol))
-        );
-        if (legsToPlace.length === 0) {
-          throw new Error(`All markets expired or locked: ${verification.failedMarkets.join(", ")}`);
-        }
-        // Update progress to show we're proceeding with fewer
-        setProgress(`${verification.failedMarkets.length} market(s) expired, placing ${legsToPlace.length} remaining...`);
-      }
-
+      // placeBatchOrders now auto-refreshes stale markets and substitutes expired ones
       setProgress("Placing orders...");
-      const batchResult = await placeBatchOrders(exchange, legsToPlace, (done, total, current) => {
+      const batchResult = await placeBatchOrders(exchange, proposal.legs, (done, total, current) => {
         setProgress(`Placing ${done + 1}/${total}: ${current}`);
       });
 
       setOrderResults(batchResult);
 
+      // Capture any substitutions made
+      if (batchResult.substitutions && batchResult.substitutions.length > 0) {
+        setSubstitutions(batchResult.substitutions);
+      }
+
       if (batchResult.successCount === 0) {
         const failed = batchResult.results.filter((r) => !r.success);
-        throw new Error(failed[0]?.error || "All orders failed");
+        throw new Error(failed[0]?.error || "All orders failed — markets may have expired");
       }
 
       setProgress("Saving basket...");
@@ -514,6 +504,23 @@ export default function BasketModal({
               Basket created with {orderResults?.successCount ?? 0} positions
             </p>
             <p className="mt-1 font-mono text-xs text-white/40">ID: {basketId}</p>
+
+            {/* Show substitutions if any markets were auto-replaced */}
+            {substitutions.length > 0 && (
+              <div className="mx-auto mt-4 max-w-xs rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-left">
+                <p className="text-xs font-medium text-yellow-300">
+                  {substitutions.length} market{substitutions.length > 1 ? "s" : ""} auto-substituted:
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {substitutions.map((s, i) => (
+                    <li key={i} className="text-[10px] text-yellow-200/70">
+                      {s.originalSymbol.split("-").slice(0, 2).join("-")} → {s.newSymbol.split("-").slice(0, 2).join("-")}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <button
               onClick={onClose}
               className="mt-6 rounded-lg bg-gradient-to-r from-orange-500 to-green-500 px-6 py-2.5 text-sm font-semibold text-white"
