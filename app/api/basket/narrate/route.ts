@@ -232,7 +232,7 @@ ${settledCount === legs.length ? "All legs settled - ready to redeem." : pending
         onchainStatus: l.onchainStatus,
         outcome: l.resolvedOutcome,
         payout: l.payout,
-        redeemable: (l.resolvedOutcome === "won" || l.resolvedOutcome === "voided") && !l.redeemTxHash,
+        redeemable: (l.resolvedOutcome === "won" || l.resolvedOutcome === "voided") && !l.redeemTxHash && l.filled > 0,
       })),
     });
   } catch (err) {

@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
 
     for (const leg of legs) {
       if (leg.redeemTxHash) continue; // Already redeemed
+      if (!leg.filled || leg.filled <= 0) continue; // No filled position to redeem
 
       try {
         const onchain = await exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
@@ -104,10 +105,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (redeemableLegs.length === 0) {
+      // Check if there are unfilled legs that "won" but can't be redeemed
+      const unfilledWins = legs.filter(l =>
+        !l.redeemTxHash &&
+        (!l.filled || l.filled <= 0)
+      ).length;
+
       return NextResponse.json({
-        message: "No legs to redeem",
+        message: unfilledWins > 0
+          ? `No filled positions to redeem. ${unfilledWins} leg(s) were not matched with liquidity.`
+          : "No legs to redeem",
         redeemed: 0,
         totalPayout: 0,
+        unfilledCount: unfilledWins,
       });
     }
 

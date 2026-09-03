@@ -66,8 +66,24 @@ export async function refreshStaleLegs(
     const originalMarket = tradingMarkets.find((m) => m.symbol === leg.symbol);
 
     if (originalMarket) {
-      // Market still available - keep the leg as is
-      refreshedLegs.push(leg);
+      // Market still available - refresh price to ensure fill
+      try {
+        const book = await exchange.fetchOrderBook(`${originalMarket.symbol}#YES`, 5);
+        const bestAsk = book.asks[0]?.[0] ?? 0.5;
+        // Add 2% slippage to ensure fill
+        const fillPrice = leg.side === "YES"
+          ? Math.min(bestAsk * 1.02, 0.99)  // Buy YES at slightly above ask
+          : Math.min((1 - bestAsk) * 1.02, 0.99); // Buy NO
+
+        refreshedLegs.push({
+          ...leg,
+          price: fillPrice,
+          cost: leg.quantity * fillPrice,
+        });
+      } catch {
+        // Fallback to original price if fetch fails
+        refreshedLegs.push(leg);
+      }
       continue;
     }
 
