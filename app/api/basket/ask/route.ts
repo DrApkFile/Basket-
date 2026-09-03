@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
     const systemPrompt = `You are a clarification assistant for a prediction market basket. You may ONLY explain, clarify, or elaborate on the reasoning and data that was stored when this basket was created.
 
