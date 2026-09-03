@@ -27,6 +27,8 @@ export interface BatchOrderResult {
   allSucceeded: boolean;
   successCount: number;
   failCount: number;
+  /** The actual legs used (after refresh/substitution) - use these for saving */
+  actualLegs: ProposedLeg[];
 }
 
 export interface Substitution {
@@ -189,6 +191,7 @@ export async function placeBatchOrders(
       successCount: 0,
       failCount: legs.length,
       substitutions: refreshResult.substitutions,
+      actualLegs: [],
     };
   }
 
@@ -266,6 +269,7 @@ export async function placeBatchOrders(
     successCount,
     failCount: freshLegs.length - successCount,
     substitutions: refreshResult.substitutions,
+    actualLegs: freshLegs,
   };
 }
 

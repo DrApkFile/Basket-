@@ -180,12 +180,17 @@ export default function BasketModal({
       }
 
       setProgress("Saving basket...");
+      // Use actualLegs from batch result (after refresh/substitution), not original proposal legs
+      const actualProposal = {
+        ...proposal,
+        legs: batchResult.actualLegs ?? proposal.legs,
+      };
       const approveRes = await fetch("/api/basket/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: address,
-          proposal,
+          proposal: actualProposal,
           orderResults: batchResult.results,
         }),
       });
@@ -512,11 +517,20 @@ export default function BasketModal({
                   {substitutions.length} market{substitutions.length > 1 ? "s" : ""} auto-substituted:
                 </p>
                 <ul className="mt-1 space-y-0.5">
-                  {substitutions.map((s, i) => (
-                    <li key={i} className="text-[10px] text-yellow-200/70">
-                      {s.originalSymbol.split("-").slice(0, 2).join("-")} → {s.newSymbol.split("-").slice(0, 2).join("-")}
-                    </li>
-                  ))}
+                  {substitutions.map((s, i) => {
+                    // Extract meaningful parts: "ETH-248624-03SEP26-1520/tUSDC" → "ETH 15:20"
+                    const formatSymbol = (sym: string) => {
+                      const parts = sym.split("-");
+                      const asset = parts[0];
+                      const time = parts[3]?.split("/")[0] ?? "";
+                      return `${asset} ${time.slice(0,2)}:${time.slice(2)}`;
+                    };
+                    return (
+                      <li key={i} className="text-[10px] text-yellow-200/70">
+                        {formatSymbol(s.originalSymbol)} → {formatSymbol(s.newSymbol)}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
