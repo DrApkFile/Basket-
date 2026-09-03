@@ -16,7 +16,6 @@ import {
   serverTimestamp,
   query,
   where,
-  orderBy,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -174,17 +173,22 @@ export async function getBasketLegsWithStatus(basketId: string): Promise<LegDoc[
 
 /**
  * Get baskets for a user, ordered by most recently created first.
+ * Note: Sorting done client-side to avoid needing a composite Firestore index.
  */
 export async function getUserBaskets(userId: string): Promise<Array<BasketDoc & { id: string }>> {
   const q = query(
     collection(db, "baskets"),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
+    where("userId", "==", userId)
   );
   const snap = await getDocs(q);
   return snap.docs
     .filter((d) => !(d.data() as BasketDoc & { deleted?: boolean }).deleted) // Exclude soft-deleted
-    .map((d) => ({ id: d.id, ...(d.data() as BasketDoc) }));
+    .map((d) => ({ id: d.id, ...(d.data() as BasketDoc) }))
+    .sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() ?? 0;
+      const bTime = b.createdAt?.toMillis?.() ?? 0;
+      return bTime - aTime; // Descending (newest first)
+    });
 }
 
 /**
