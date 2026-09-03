@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       if (apiKey && settledCount > 0) {
         try {
           const genAI = new GoogleGenerativeAI(apiKey);
-          const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+          const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
           const prompt = `Narrate this prediction market basket status in 1-2 sentences. Be direct about wins and losses.
 Asset: ${basket.asset} | Legs: ${legs.length} | Wins: ${wins} | Losses: ${losses} | Voided: ${voided} | Pending: ${pending}
