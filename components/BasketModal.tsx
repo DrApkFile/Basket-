@@ -181,9 +181,23 @@ export default function BasketModal({
 
       setProgress("Saving basket...");
       // Use actualLegs from batch result (after refresh/substitution), not original proposal legs
+      // Ensure all values are JSON-safe (no BigInt, etc.)
+      const safeResults = batchResult.results.map(r => ({
+        ...r,
+        filled: Number(r.filled),
+        orderId: String(r.orderId),
+      }));
+      const safeLegs = (batchResult.actualLegs ?? proposal.legs).map(leg => ({
+        ...leg,
+        quantity: Number(leg.quantity),
+        price: Number(leg.price),
+        cost: Number(leg.cost),
+        expiry: Number(leg.expiry),
+      }));
       const actualProposal = {
         ...proposal,
-        legs: batchResult.actualLegs ?? proposal.legs,
+        legs: safeLegs,
+        totalCost: Number(proposal.totalCost),
       };
       const approveRes = await fetch("/api/basket/approve", {
         method: "POST",
@@ -191,7 +205,7 @@ export default function BasketModal({
         body: JSON.stringify({
           userId: address,
           proposal: actualProposal,
-          orderResults: batchResult.results,
+          orderResults: safeResults,
         }),
       });
 

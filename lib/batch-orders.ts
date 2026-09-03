@@ -71,7 +71,15 @@ export async function refreshStaleLegs(
       // Market still available - refresh price to ensure fill
       try {
         const book = await exchange.fetchOrderBook(`${originalMarket.symbol}#YES`, 5);
-        const bestAsk = book.asks[0]?.[0] ?? 0.5;
+        const bestAsk = book.asks[0]?.[0];
+
+        // Validate bestAsk is a valid number
+        if (typeof bestAsk !== "number" || isNaN(bestAsk) || bestAsk <= 0 || bestAsk >= 1) {
+          // Invalid price, use original
+          refreshedLegs.push(leg);
+          continue;
+        }
+
         // Add 2% slippage to ensure fill
         const fillPrice = leg.side === "YES"
           ? Math.min(bestAsk * 1.02, 0.99)  // Buy YES at slightly above ask
@@ -222,9 +230,9 @@ export async function placeBatchOrders(
       results.push({
         marketId: leg.marketId,
         symbol: leg.symbol,
-        orderId: result.id,
+        orderId: String(result.id),
         txHash: result.txHash ?? "",
-        filled: result.filled,
+        filled: Number(result.filled), // Ensure number, not BigInt
         success: true,
       });
       successCount++;
