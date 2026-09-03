@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useWalletClient, useAccount } from "wagmi";
+import { useWalletClient, useAccount, usePublicClient } from "wagmi";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createExchange } from "@/lib/somnia";
@@ -54,6 +54,7 @@ interface RedeemableLeg {
 
 export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
   const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const { address } = useAccount();
   const [basket, setBasket] = useState<(BasketDoc & { id: string }) | null>(null);
   const [narration, setNarration] = useState<NarrationResponse | null>(null);
@@ -210,7 +211,22 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
 
         const txHash = result.hash ?? "";
 
-        // Mark all as redeemed
+        if (!txHash) {
+          throw new Error("No transaction hash returned");
+        }
+
+        // Wait for transaction confirmation
+        setRedeemProgress("Waiting for confirmation...");
+
+        // Wait for receipt using the public client
+        const receipt = await publicClient?.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+        console.log("Transaction receipt:", receipt);
+
+        if (receipt?.status !== "success") {
+          throw new Error("Transaction reverted on-chain");
+        }
+
+        // Mark all as redeemed only after confirmation
         for (const leg of redeemableLegs) {
           redemptions.push({
             marketId: leg.marketId,

@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     id: basket.id,
+    userId: basket.userId,
     asset: basket.asset,
     totalSpent: basket.totalSpent,
     maxSpend: basket.maxSpend,

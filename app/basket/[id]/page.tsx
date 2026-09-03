@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -17,6 +17,7 @@ interface BasketData {
   aiReasoning: string;
   status: string;
   createdAt: string;
+  userId: string;
 }
 
 interface LegData {
@@ -81,72 +82,79 @@ export default function SharedBasketPage() {
   const [askError, setAskError] = useState<string | null>(null);
 
   // Fetch basket data
-  useEffect(() => {
-    async function fetchBasket() {
-      try {
-        // Fetch basket narration which includes legs
-        const res = await fetch("/api/basket/narrate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ basketId }),
-        });
+  const fetchBasket = useCallback(async (skipNarration = false) => {
+    try {
+      // Fetch basket narration which includes legs
+      const res = await fetch("/api/basket/narrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ basketId, skipNarration }),
+      });
 
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Basket not found");
-        }
-
+      if (!res.ok) {
         const data = await res.json();
-
-        // Also fetch the basket doc itself for reasoning
-        const basketRes = await fetch(`/api/basket/get?basketId=${basketId}`);
-        let basketData: BasketData | null = null;
-
-        if (basketRes.ok) {
-          const bData = await basketRes.json();
-          basketData = {
-            asset: bData.asset,
-            totalSpent: bData.totalSpent,
-            maxSpend: bData.maxSpend,
-            aiReasoning: bData.aiReasoning,
-            status: bData.status,
-            createdAt: bData.createdAt,
-          };
-        }
-
-        setBasket(
-          basketData || {
-            asset: data.legs[0]?.symbol.split("-")[0] || "Unknown",
-            totalSpent: data.summary.totalCost,
-            maxSpend: data.summary.totalCost,
-            aiReasoning: "",
-            status: data.status,
-            createdAt: "",
-          }
-        );
-
-        setLegs(
-          data.legs.map((l: LegData & { price?: number; interval?: string; expiry?: number }) => ({
-            marketId: l.marketId,
-            symbol: l.symbol,
-            side: l.side,
-            quantity: l.quantity || 0,
-            price: l.price || 0,
-            cost: l.cost || 0,
-            interval: l.interval || "?",
-            expiry: l.expiry || 0,
-            outcome: l.outcome,
-          }))
-        );
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load basket");
-      } finally {
-        setLoading(false);
+        throw new Error(data.error || "Basket not found");
       }
-    }
 
+      const data = await res.json();
+
+      // Also fetch the basket doc itself for reasoning
+      const basketRes = await fetch(`/api/basket/get?basketId=${basketId}`);
+      let basketData: BasketData | null = null;
+
+      if (basketRes.ok) {
+        const bData = await basketRes.json();
+        basketData = {
+          asset: bData.asset,
+          totalSpent: bData.totalSpent,
+          maxSpend: bData.maxSpend,
+          aiReasoning: bData.aiReasoning,
+          status: bData.status,
+          createdAt: bData.createdAt,
+          userId: bData.userId || "",
+        };
+      }
+
+      setBasket(
+        basketData || {
+          asset: data.legs[0]?.symbol.split("-")[0] || "Unknown",
+          totalSpent: data.summary.totalCost,
+          maxSpend: data.summary.totalCost,
+          aiReasoning: "",
+          status: data.status,
+          createdAt: "",
+          userId: "",
+        }
+      );
+
+      setLegs(
+        data.legs.map((l: LegData & { price?: number; interval?: string; expiry?: number }) => ({
+          marketId: l.marketId,
+          symbol: l.symbol,
+          side: l.side,
+          quantity: l.quantity || 0,
+          price: l.price || 0,
+          cost: l.cost || 0,
+          interval: l.interval || "?",
+          expiry: l.expiry || 0,
+          outcome: l.outcome,
+        }))
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load basket");
+    } finally {
+      setLoading(false);
+    }
+  }, [basketId]);
+
+  // Initial fetch and polling for status updates
+  useEffect(() => {
     if (basketId) {
-      fetchBasket();
+      fetchBasket(false); // Initial fetch with narration
+
+      // Poll every 10 seconds for status updates (skip narration for speed)
+      const interval = setInterval(() => fetchBasket(true), 10000);
+      return () => clearInterval(interval);
     }
   }, [basketId]);
 
@@ -326,7 +334,8 @@ export default function SharedBasketPage() {
           )}
         </div>
 
-        {/* Copy to My Basket Section */}
+        {/* Copy to My Basket Section - hide for basket owner */}
+        {!(address && basket?.userId && address.toLowerCase() === basket.userId.toLowerCase()) && (
         <div className="mt-6 rounded-xl border border-white/10 p-6">
           <h2 className="font-display text-sm font-bold text-white/80">COPY TO MY BASKET</h2>
           <p className="mt-1 text-xs text-white/50">
@@ -413,6 +422,7 @@ export default function SharedBasketPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Ask-AI Section */}
         {basket?.aiReasoning && (
