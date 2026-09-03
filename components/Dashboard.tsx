@@ -106,8 +106,8 @@ export default function Dashboard() {
         :root {
           --accent-green: #00E28A;
           --accent-orange: #FF6B35;
-          --accent-gradient: linear-gradient(135deg, var(--accent-orange), var(--accent-green));
-          --glass-bg: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(0, 226, 138, 0.04));
+          --accent-primary: #FF6B35;
+          --glass-bg: rgba(255, 255, 255, 0.03);
           --glass-border: rgba(255, 255, 255, 0.08);
         }
 
@@ -151,9 +151,7 @@ export default function Dashboard() {
         .dash-brand-name {
           font-size: 22px;
           font-weight: 700;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--accent-orange);
         }
 
         .dash-tabs {
@@ -183,7 +181,7 @@ export default function Dashboard() {
 
         .dash-tab.active {
           color: #000;
-          background: var(--accent-gradient);
+          background: var(--accent-orange);
           box-shadow: 0 2px 12px rgba(255, 107, 53, 0.3);
         }
 
@@ -201,7 +199,7 @@ export default function Dashboard() {
           font-size: 14px;
           font-weight: 600;
           color: #000;
-          background: var(--accent-gradient);
+          background: var(--accent-orange);
           border: none;
           border-radius: 12px;
           cursor: pointer;
@@ -250,9 +248,7 @@ export default function Dashboard() {
         .stat-value {
           font-size: 32px;
           font-weight: 700;
-          background: var(--accent-gradient);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--accent-orange);
         }
 
         .stat-change {
@@ -305,8 +301,8 @@ export default function Dashboard() {
 
         .filter-pill.active {
           color: #fff;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(0, 226, 138, 0.1));
-          border-color: rgba(255, 107, 53, 0.3);
+          background: rgba(255, 107, 53, 0.15);
+          border-color: rgba(255, 107, 53, 0.4);
         }
 
         /* Market Grid */
@@ -364,7 +360,7 @@ export default function Dashboard() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(0, 226, 138, 0.1));
+          background: rgba(255, 107, 53, 0.15);
           border-radius: 12px;
           font-size: 18px;
           font-weight: 700;
@@ -425,7 +421,7 @@ export default function Dashboard() {
           font-size: 13px;
           font-weight: 600;
           color: #000;
-          background: var(--accent-gradient);
+          background: var(--accent-orange);
           border: none;
           border-radius: 10px;
           cursor: pointer;
@@ -456,7 +452,7 @@ export default function Dashboard() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(0, 226, 138, 0.05));
+          background: rgba(255, 107, 53, 0.1);
           border-radius: 24px;
           margin-bottom: 24px;
           font-size: 32px;
@@ -532,13 +528,7 @@ export default function Dashboard() {
         <header className="dash-header">
           <Link href="/" className="dash-brand">
             <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-              <defs>
-                <linearGradient id="dashLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#FF6B35" />
-                  <stop offset="100%" stopColor="#00E28A" />
-                </linearGradient>
-              </defs>
-              <circle cx="18" cy="18" r="18" fill="url(#dashLogoGrad)" />
+              <circle cx="18" cy="18" r="18" fill="#FF6B35" />
               <path d="M18 8L11 15L18 13L25 15L18 8Z" fill="#000" />
               <path d="M11 15L18 22V13L11 15Z" fill="#000" fillOpacity="0.4" />
               <path d="M25 15L18 13V22L25 15Z" fill="#000" fillOpacity="0.7" />
@@ -697,7 +687,7 @@ export default function Dashboard() {
                       fontSize: "14px",
                       fontWeight: 600,
                       color: "#000",
-                      background: "linear-gradient(135deg, #FF6B35, #00E28A)",
+                      background: "#FF6B35",
                       border: "none",
                       borderRadius: "10px",
                       cursor: "pointer",
@@ -720,7 +710,7 @@ export default function Dashboard() {
                       fontSize: "14px",
                       fontWeight: 600,
                       color: "#000",
-                      background: "linear-gradient(135deg, #FF6B35, #00E28A)",
+                      background: "#FF6B35",
                       border: "none",
                       borderRadius: "10px",
                       cursor: "pointer",

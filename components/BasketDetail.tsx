@@ -221,7 +221,25 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         console.error("Batch redeem failed:", err);
-        errors.push(errMsg);
+
+        // Handle common errors gracefully without showing raw SDK messages
+        if (errMsg.includes("ZeroAmount")) {
+          // Already redeemed or no balance - not an error for user
+          setRedeemProgress("Positions may have already been redeemed");
+          setTimeout(() => setRedeeming(false), 3000);
+          return;
+        } else if (errMsg.includes("user rejected") || errMsg.includes("User rejected")) {
+          setRedeemProgress("Transaction cancelled");
+          setTimeout(() => setRedeeming(false), 2000);
+          return;
+        } else if (errMsg.includes("insufficient") || errMsg.includes("Insufficient")) {
+          setRedeemProgress("Insufficient balance for gas fees");
+          setTimeout(() => setRedeeming(false), 3000);
+          return;
+        } else {
+          // Show actual error for debugging
+          errors.push(errMsg);
+        }
       }
 
       // Record redemptions in Firestore
@@ -242,7 +260,16 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
       await fetchNarration(); // Refresh status
     } catch (err) {
       console.error("Redeem error:", err);
-      setRedeemProgress(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+
+      // Show user-friendly messages instead of raw errors
+      if (errMsg.includes("user rejected") || errMsg.includes("User rejected")) {
+        setRedeemProgress("Transaction cancelled");
+      } else if (errMsg.includes("ZeroAmount")) {
+        setRedeemProgress("Positions may have already been redeemed");
+      } else {
+        setRedeemProgress(`Error: ${errMsg}`);
+      }
     } finally {
       setTimeout(() => setRedeeming(false), 4000);
     }
