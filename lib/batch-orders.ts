@@ -70,20 +70,25 @@ export async function refreshStaleLegs(
     if (originalMarket) {
       // Market still available - refresh price to ensure fill
       try {
-        const book = await exchange.fetchOrderBook(`${originalMarket.symbol}#YES`, 5);
+        // Fetch the order book for the CORRECT side
+        const side = leg.side;
+        const book = await exchange.fetchOrderBook(`${originalMarket.symbol}#${side}`, 5);
         const bestAsk = book.asks[0]?.[0];
 
         // Validate bestAsk is a valid number
         if (typeof bestAsk !== "number" || isNaN(bestAsk) || bestAsk <= 0 || bestAsk >= 1) {
-          // Invalid price, use original
-          refreshedLegs.push(leg);
+          // Invalid price, try a more aggressive fill price
+          const aggressivePrice = Math.min(leg.price * 1.10, 0.95);
+          refreshedLegs.push({
+            ...leg,
+            price: aggressivePrice,
+            cost: leg.quantity * aggressivePrice,
+          });
           continue;
         }
 
-        // Add 2% slippage to ensure fill
-        const fillPrice = leg.side === "YES"
-          ? Math.min(bestAsk * 1.02, 0.99)  // Buy YES at slightly above ask
-          : Math.min((1 - bestAsk) * 1.02, 0.99); // Buy NO
+        // Add 5% slippage to ensure fill (markets can move fast)
+        const fillPrice = Math.min(bestAsk * 1.05, 0.95);
 
         refreshedLegs.push({
           ...leg,
@@ -91,8 +96,13 @@ export async function refreshStaleLegs(
           cost: leg.quantity * fillPrice,
         });
       } catch {
-        // Fallback to original price if fetch fails
-        refreshedLegs.push(leg);
+        // Fallback to more aggressive price if fetch fails
+        const aggressivePrice = Math.min(leg.price * 1.10, 0.95);
+        refreshedLegs.push({
+          ...leg,
+          price: aggressivePrice,
+          cost: leg.quantity * aggressivePrice,
+        });
       }
       continue;
     }
@@ -125,14 +135,17 @@ export async function refreshStaleLegs(
     const replacement = candidates[0];
     const newMarket = replacement.market;
 
-    // Fetch current price for the replacement market
-    let newPrice = leg.price; // Fallback to original price
+    // Fetch current price for the replacement market (correct side)
+    let newPrice = Math.min(leg.price * 1.10, 0.95); // Aggressive fallback
     try {
-      const book = await exchange.fetchOrderBook(`${newMarket.symbol}#YES`, 5);
-      const bestAsk = book.asks[0]?.[0] ?? 0.5;
-      newPrice = leg.side === "YES" ? bestAsk : 1 - bestAsk;
+      const book = await exchange.fetchOrderBook(`${newMarket.symbol}#${leg.side}`, 5);
+      const bestAsk = book.asks[0]?.[0];
+      if (typeof bestAsk === "number" && !isNaN(bestAsk) && bestAsk > 0 && bestAsk < 1) {
+        // Add 5% slippage to ensure fill
+        newPrice = Math.min(bestAsk * 1.05, 0.95);
+      }
     } catch {
-      console.warn(`[refresh] Could not fetch price for ${newMarket.symbol}, using original`);
+      console.warn(`[refresh] Could not fetch price for ${newMarket.symbol}, using aggressive price`);
     }
 
     const info = newMarket.info as { interval?: string; expiry?: string | number };
