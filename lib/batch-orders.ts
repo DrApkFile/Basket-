@@ -77,18 +77,15 @@ export async function refreshStaleLegs(
 
         // Validate bestAsk is a valid number
         if (typeof bestAsk !== "number" || isNaN(bestAsk) || bestAsk <= 0 || bestAsk >= 1) {
-          // Invalid price, try a more aggressive fill price
-          const aggressivePrice = Math.min(leg.price * 1.10, 0.95);
-          refreshedLegs.push({
-            ...leg,
-            price: aggressivePrice,
-            cost: leg.quantity * aggressivePrice,
-          });
+          // No valid ask - skip this leg, market has no liquidity
+          console.log(`[refresh] No liquidity for ${leg.symbol}#${side}, skipping`);
+          droppedCount++;
           continue;
         }
 
-        // Add 5% slippage to ensure fill (markets can move fast)
-        const fillPrice = Math.min(bestAsk * 1.05, 0.95);
+        // Take the ask price directly + small buffer for slippage
+        // On thin markets, trying to get a better price just means no fill
+        const fillPrice = Math.min(bestAsk + 0.02, 0.98);
 
         refreshedLegs.push({
           ...leg,
@@ -96,13 +93,9 @@ export async function refreshStaleLegs(
           cost: leg.quantity * fillPrice,
         });
       } catch {
-        // Fallback to more aggressive price if fetch fails
-        const aggressivePrice = Math.min(leg.price * 1.10, 0.95);
-        refreshedLegs.push({
-          ...leg,
-          price: aggressivePrice,
-          cost: leg.quantity * aggressivePrice,
-        });
+        // Order book fetch failed - can't determine liquidity, skip
+        console.log(`[refresh] Failed to fetch order book for ${leg.symbol}, skipping`);
+        droppedCount++;
       }
       continue;
     }
@@ -136,16 +129,23 @@ export async function refreshStaleLegs(
     const newMarket = replacement.market;
 
     // Fetch current price for the replacement market (correct side)
-    let newPrice = Math.min(leg.price * 1.10, 0.95); // Aggressive fallback
+    let newPrice: number | null = null;
     try {
       const book = await exchange.fetchOrderBook(`${newMarket.symbol}#${leg.side}`, 5);
       const bestAsk = book.asks[0]?.[0];
       if (typeof bestAsk === "number" && !isNaN(bestAsk) && bestAsk > 0 && bestAsk < 1) {
-        // Add 5% slippage to ensure fill
-        newPrice = Math.min(bestAsk * 1.05, 0.95);
+        // Take the ask + small buffer
+        newPrice = Math.min(bestAsk + 0.02, 0.98);
       }
     } catch {
-      console.warn(`[refresh] Could not fetch price for ${newMarket.symbol}, using aggressive price`);
+      console.warn(`[refresh] Could not fetch price for ${newMarket.symbol}`);
+    }
+
+    // If no valid price, skip this replacement
+    if (newPrice === null) {
+      console.log(`[refresh] No liquidity for replacement ${newMarket.symbol}, skipping`);
+      droppedCount++;
+      continue;
     }
 
     const info = newMarket.info as { interval?: string; expiry?: string | number };
