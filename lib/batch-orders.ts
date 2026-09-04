@@ -11,6 +11,7 @@
 
 import type { SomniaMarkets, Market } from "@somnia-chain/markets-sdk";
 import type { ProposedLeg, LiquidityLabel } from "./firestore-types";
+import { MIN_TRADEABLE_BUFFER_SECONDS } from "./market-constants";
 
 export interface OrderResult {
   marketId: string;
@@ -114,7 +115,7 @@ export async function refreshStaleLegs(
         const expiry = Number(info.expiry || 0);
         return { market: m, expiry };
       })
-      .filter((c) => c.expiry > now + 60) // At least 1 min until expiry
+      .filter((c) => c.expiry > now + MIN_TRADEABLE_BUFFER_SECONDS)
       .sort((a, b) => a.expiry - b.expiry);
 
     if (candidates.length === 0) {

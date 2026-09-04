@@ -20,6 +20,7 @@ import { SomniaMarkets, SOMNIA_TESTNET_ADDRESSES } from "@somnia-chain/markets-s
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import type { BinaryMarket } from "@somnia-chain/markets-sdk";
 import type { LegDoc, ProposedLeg, LiquidityLabel } from "@/lib/firestore-types";
+import { MIN_TRADEABLE_BUFFER_SECONDS } from "@/lib/market-constants";
 
 const INDEXER_URL = "https://dev.smk.somnia.host/v1/graphql";
 
@@ -68,7 +69,6 @@ export async function POST(request: NextRequest) {
     await exchange.loadMarkets();
 
     const now = Math.floor(Date.now() / 1000);
-    const FIVE_MINUTES = 5 * 60;
 
     // 4. Check each leg's current status and fetch live data
     const liveDraftLegs: ProposedLeg[] = [];
@@ -102,11 +102,11 @@ export async function POST(request: NextRequest) {
         const info = market.info as BinaryMarket;
         const expiry = Number(info.expiry);
 
-        // Check if expiring too soon
-        if (expiry <= now + FIVE_MINUTES) {
+        // Check if expiring too soon (30 seconds buffer for transaction safety)
+        if (expiry <= now + MIN_TRADEABLE_BUFFER_SECONDS) {
           droppedLegs.push({
             symbol: leg.symbol,
-            reason: "Expires in less than 5 minutes",
+            reason: `Expires in less than ${MIN_TRADEABLE_BUFFER_SECONDS} seconds`,
           });
           continue;
         }

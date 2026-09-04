@@ -23,6 +23,12 @@ import { computeRiskComparison } from "@/lib/risk-comparison";
 import { createHash } from "crypto";
 import { db } from "@/lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
+import {
+  MIN_TRADEABLE_BUFFER_SECONDS,
+  RPC_TIMEOUT_MS,
+  withTimeout,
+  withRetry,
+} from "@/lib/market-constants";
 
 const INDEXER_URL = "https://dev.smk.somnia.host/v1/graphql";
 const MAX_BASKET_SIZE = 5; // Hard limit — enforced in code, not just prompted
@@ -93,7 +99,6 @@ export async function POST(request: NextRequest) {
 
     await exchange.loadMarkets();
     const now = Math.floor(Date.now() / 1000);
-    const MIN_TIME_BUFFER = 2 * 60; // At least 2 minutes before expiry
 
     // Calculate max expiry time based on user preference
     const maxExpirySeconds = maxExpiryMinutes ? maxExpiryMinutes * 60 : null;
@@ -117,7 +122,7 @@ export async function POST(request: NextRequest) {
       const timeToExpiry = expiry - now;
 
       // Must expire after minimum buffer
-      if (timeToExpiry < MIN_TIME_BUFFER) return false;
+      if (timeToExpiry < MIN_TRADEABLE_BUFFER_SECONDS) return false;
 
       // If maxExpiryMinutes specified, must expire within that window
       if (maxExpirySeconds && timeToExpiry > maxExpirySeconds) return false;
@@ -133,7 +138,7 @@ export async function POST(request: NextRequest) {
       const allLive = Object.values(exchange.markets).filter((m) => {
         if (m.type !== "binary" || !m.active) return false;
         const expiry = Number((m.info as BinaryMarket).expiry);
-        return expiry > now + MIN_TIME_BUFFER;
+        return expiry > now + MIN_TRADEABLE_BUFFER_SECONDS;
       });
       const availableAssets = [...new Set(allLive.map((m) => m.base.split("-")[0]))];
       const availableIntervals = [...new Set(allLive.map((m) => (m.info as BinaryMarket).interval))];
@@ -182,15 +187,33 @@ export async function POST(request: NextRequest) {
       liquidityLabel: LiquidityLabel;
     }
     const tradingMarkets: CandidateMarket[] = [];
+    let rpcFailureCount = 0;
 
     for (const m of liveMarkets.slice(0, 20)) {
       // Limit to 20 to avoid too many RPC calls
       try {
-        const onchain = await exchange.client.getMarketOnchain(m.id as `0x${string}`);
+        // Add timeout + ONE retry for flaky testnet RPC
+        const onchain = await withRetry(async () => {
+          const result = await withTimeout(
+            exchange.client.getMarketOnchain(m.id as `0x${string}`),
+            RPC_TIMEOUT_MS
+          );
+          if (!result) throw new Error("RPC timeout");
+          return result;
+        });
+
         if (onchain.status !== 1) continue; // Not Trading
 
-        // Get order book with depth
-        const book = await exchange.fetchOrderBook(`${m.symbol}#YES`, 10);
+        // Get order book with timeout + retry
+        const book = await withRetry(async () => {
+          const result = await withTimeout(
+            exchange.fetchOrderBook(`${m.symbol}#YES`, 10),
+            RPC_TIMEOUT_MS
+          );
+          if (!result) throw new Error("Order book timeout");
+          return result;
+        });
+
         const bestAsk = book.asks[0]?.[0] ?? 0.5;
         const bestBid = book.bids[0]?.[0] ?? 0.5;
 
@@ -245,9 +268,22 @@ export async function POST(request: NextRequest) {
           lastTradeAt,
           liquidityLabel,
         });
-      } catch {
-        // Skip markets we can't verify
+      } catch (err) {
+        // Log the failure clearly instead of silent skip
+        rpcFailureCount++;
+        console.warn(
+          `[construct] RPC failed for market ${m.id} (${m.symbol}):`,
+          err instanceof Error ? err.message : "Unknown error"
+        );
       }
+    }
+
+    // Log summary of RPC failures if any occurred
+    if (rpcFailureCount > 0) {
+      console.warn(
+        `[construct] ${rpcFailureCount} market(s) could not be verified due to RPC issues. ` +
+        `${tradingMarkets.length} market(s) successfully verified.`
+      );
     }
 
     // Check availability - be transparent, not blocking

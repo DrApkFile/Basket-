@@ -15,59 +15,40 @@ import { SomniaMarkets, SOMNIA_TESTNET_ADDRESSES } from "@somnia-chain/markets-s
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import { collection, getDocs, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  RPC_TIMEOUT_MS,
+  withTimeout,
+  deriveOutcome,
+  type ResolvedOutcome,
+} from "@/lib/market-constants";
 
 const INDEXER_URL = "https://dev.smk.somnia.host/v1/graphql";
-const RPC_TIMEOUT_MS = 3000; // 3 second timeout per RPC call
 
 interface LegWithOutcome extends LegDoc {
-  resolvedOutcome: "won" | "lost" | "voided" | "pending";
+  resolvedOutcome: ResolvedOutcome;
+  payout: number;
+}
+
+interface OnchainCheckResult {
+  status: number;
+  winningOutcome: number;
+  outcome: ResolvedOutcome;
   payout: number;
 }
 
 async function checkLegOnchain(
   exchange: SomniaMarkets,
   leg: LegDoc
-): Promise<{ status: number; winningOutcome: number; outcome: "won" | "lost" | "voided" | "pending"; payout: number } | null> {
+): Promise<OnchainCheckResult | null> {
   try {
-    const onchainPromise = exchange.client.getMarketOnchain(leg.marketId as `0x${string}`);
-    const timeoutPromise = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), RPC_TIMEOUT_MS)
+    const onchain = await withTimeout(
+      exchange.client.getMarketOnchain(leg.marketId as `0x${string}`),
+      RPC_TIMEOUT_MS
     );
-
-    const onchain = await Promise.race([onchainPromise, timeoutPromise]);
     if (!onchain) return null;
 
-    let outcome: "won" | "lost" | "voided" | "pending" = "pending";
-    let payout = 0;
-
-    // MarketStatus enum: 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
-    if (onchain.status === 5) {
-      // Voided - but only if user has filled position
-      if (leg.filled > 0) {
-        outcome = "voided";
-        payout = leg.filled * 0.5;
-      } else {
-        outcome = "lost"; // No position = nothing to claim
-        payout = 0;
-      }
-    } else if (onchain.status === 4) {
-      // SDK convention: winningOutcome 0 = YES won, 1 = NO won
-      const legIsYes = leg.side === "YES";
-      const marketWentTheirWay = (onchain.winningOutcome === 0 && legIsYes) || (onchain.winningOutcome === 1 && !legIsYes);
-
-      if (leg.filled > 0 && marketWentTheirWay) {
-        outcome = "won";
-        payout = leg.filled;
-      } else if (leg.filled > 0) {
-        outcome = "lost";
-        payout = 0;
-      } else {
-        // No filled position - show as lost (nothing to claim)
-        // Could show "unfilled" but that's a new status we'd need to add
-        outcome = "lost";
-        payout = 0;
-      }
-    }
+    // Use shared helper for consistent win/loss logic
+    const { outcome, payout } = deriveOutcome(onchain.status, onchain.winningOutcome, leg);
 
     return { status: onchain.status, winningOutcome: onchain.winningOutcome, outcome, payout };
   } catch {
@@ -120,20 +101,40 @@ export async function POST(request: NextRequest) {
           payout: result.payout,
         };
       }
-      // Fallback to cached status
+      // RPC timed out - use CACHED outcome if available
+      // This prevents overwriting a known "settled" status with "pending"
+      if (leg.outcome && leg.outcome !== "pending") {
+        // We have a cached resolved outcome - compute payout from it
+        const payout = leg.outcome === "won" ? leg.filled :
+                       leg.outcome === "voided" ? leg.filled * 0.5 : 0;
+        return {
+          ...leg,
+          resolvedOutcome: leg.outcome as ResolvedOutcome,
+          payout,
+        };
+      }
+      // No cached outcome - derive from cached status (best effort)
+      const cached = deriveOutcome(leg.onchainStatus, 0, leg);
       return {
         ...leg,
-        resolvedOutcome: "pending" as const,
-        payout: 0,
+        resolvedOutcome: cached.outcome,
+        payout: cached.payout,
       };
     });
 
-    // Update Firestore with new statuses (in parallel, fire-and-forget)
+    // Update Firestore with new statuses AND outcomes (in parallel, fire-and-forget)
     const updates = legsWithOutcomes
-      .filter((leg, i) => onchainResults[i] && onchainResults[i]!.status !== legs[i].onchainStatus)
+      .filter((leg, i) => {
+        const result = onchainResults[i];
+        if (!result) return false;
+        // Update if status changed OR outcome changed
+        return result.status !== legs[i].onchainStatus ||
+               result.outcome !== legs[i].outcome;
+      })
       .map((leg) =>
         updateDoc(legsSnap.docs.find((d) => d.data().marketId === leg.marketId)!.ref, {
           onchainStatus: leg.onchainStatus,
+          outcome: leg.resolvedOutcome, // Persist outcome so fallback works correctly
         }).catch(() => {})
       );
     Promise.all(updates); // Don't await - fire and forget
