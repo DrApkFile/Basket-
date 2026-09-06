@@ -254,6 +254,7 @@ ${settledCount === legs.length ? "All legs settled - ready to redeem." : pending
         payout: l.payout,
         redeemable: (l.resolvedOutcome === "won" || l.resolvedOutcome === "voided") && !l.redeemTxHash && l.filled > 0,
         unfilled: !l.filled || l.filled <= 0, // Flag to show order never matched
+        carriedForward: l.carriedForward ?? false, // Whether carry-forward was offered/used
       })),
     });
   } catch (err) {

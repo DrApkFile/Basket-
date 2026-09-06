@@ -5,9 +5,10 @@ import { useWalletClient, useAccount, usePublicClient } from "wagmi";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createExchange } from "@/lib/somnia";
-import type { BasketDoc, LegDoc } from "@/lib/firestore-types";
+import type { BasketDoc, LegDoc, LegSide } from "@/lib/firestore-types";
 import PositionCard from "./PositionCard";
 import { AssetIcon, LoomIcon } from "./icons";
+import CarryForwardPrompt from "./CarryForwardPrompt";
 
 interface BasketDetailProps {
   basketId: string;
@@ -41,6 +42,7 @@ interface NarrationResponse {
     payout: number;
     redeemable: boolean;
     unfilled?: boolean;
+    carriedForward?: boolean;
   }>;
 }
 
@@ -486,6 +488,20 @@ export default function BasketDetail({ basketId, onClose }: BasketDetailProps) {
                     Order not matched — no liquidity at your price
                   </p>
                 )}
+                {/* Carry-forward prompt for unfilled legs past Trading status */}
+                {leg.unfilled &&
+                  !leg.carriedForward &&
+                  leg.onchainStatus >= 2 &&
+                  isOwner && (
+                    <CarryForwardPrompt
+                      basketId={basketId}
+                      legMarketId={leg.marketId}
+                      legSymbol={leg.symbol}
+                      legSide={leg.side as LegSide}
+                      legInterval={leg.interval}
+                      onComplete={() => fetchNarration(true)}
+                    />
+                  )}
               </li>
             ))}
           </ul>

@@ -67,6 +67,7 @@ export interface LegDoc {
   onchainStatus: number; // 0=Listed, 1=Trading, 2=Locked, 3=Settling, 4=Resolved, 5=Voided
   outcome: LegOutcome | null;
   redeemTxHash: string | null;
+  carriedForward?: boolean; // If true, carry-forward was offered/used (never offer again)
 }
 
 // Input for constructing a basket (from user form)
