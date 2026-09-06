@@ -26,20 +26,20 @@ Basket lets you turn one directional view into a structured position across seve
 
 ## Screenshots
 
+### Landing Page
+*Entry point with value proposition and quick-start flow*
+
+![Landing Page](screenshots/landing-page.png)
+
 ### AI Basket Constructor
 *Proposal screen showing reasoning, liquidity notes, variance comparison, and tamper-evident hash*
 
 ![Basket Constructor](screenshots/basket-constructor.png)
 
-### AI Monitor
-*Live narration as positions settle*
+### Main App / Live Markets
+*Dashboard with live markets sidebar, basket history, and real-time status*
 
-![AI Monitor](screenshots/basket-monitor.png)
-
-### Community Feed
-*Browse and copy shared baskets with live price refresh*
-
-![Community Feed](screenshots/community-feed.png)
+![Main App](screenshots/mainapp-livemarkets.png)
 
 ---
 
@@ -77,6 +77,9 @@ Gemini API calls happen exclusively in Next.js API routes (`/api/basket/construc
 
 ### Unified Market Status Constants
 A single shared constant (`MIN_TRADEABLE_BUFFER_SECONDS = 30`) governs time-to-expiry checks across construct, copy, and batch-order flows — no inconsistent hardcoded values. See `lib/market-constants.ts`.
+
+### Bounded Carry-Forward for Unfilled Legs
+When an order doesn't fill due to thin liquidity, the system offers a one-time carry-forward to the next window in the same series — but this requires explicit user approval and a fresh wallet signature. No autonomous resubmission, no standing permissions, exactly one offer per original leg. The carry-forward prompt only appears after the original window locks (on-chain status verified), and dismissing it marks the leg as handled permanently. See `app/api/basket/carry-forward/route.ts`.
 
 ---
 
