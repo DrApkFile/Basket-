@@ -31,10 +31,10 @@ Basket lets you turn one directional view into a structured position across seve
 
 ![Landing Page](screenshots/landing-page.png)
 
-### AI Basket Constructor
-*Proposal screen showing reasoning, liquidity notes, variance comparison, and tamper-evident hash*
+### AI Monitor
+*Live narration as positions settle, with win/loss tracking and redemption flow*
 
-![Basket Constructor](screenshots/basket-constructor.png)
+![AI Monitor](screenshots/ai-monitor.png)
 
 ### Main App / Live Markets
 *Dashboard with live markets sidebar, basket history, and real-time status*
